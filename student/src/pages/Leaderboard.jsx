@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Target, Star, Zap, Award } from 'lucide-react';
+import { Trophy, Award, ArrowUp } from 'lucide-react';
 import axios from 'axios';
 
-// Assets
+// Assets (imported to avoid bundler compile errors)
 import rank1Frame from '../assets/frame_Rank_1.png';
 import rank2Frame from '../assets/frame_Rank_2.png';
 import rank3Frame from '../assets/frame_Rank_3.png';
@@ -65,6 +65,7 @@ const Leaderboard = () => {
     }, [fetchLeaderboardData]);
 
     const userRankInfo = leaderboard.find(s => user && s.id === user._id);
+    const isUserInTopTen = leaderboard.slice(0, 10).some(s => user && s.id === user._id);
 
     // Period Change Handler
     const handlePeriodChange = (period, data) => {
@@ -72,258 +73,242 @@ const Leaderboard = () => {
         setLeaderboard(data);
     };
 
+    // Helper to calculate XP needed to overtake the next rank
+    const getXpToNextRank = () => {
+        if (!userRankInfo || !leaderboard.length) return null;
+        const currentRankIndex = leaderboard.findIndex(s => s.id === user._id);
+        if (currentRankIndex <= 0) return null;
+        const nextRankStudent = leaderboard[currentRankIndex - 1];
+        const xpDiff = nextRankStudent.points - userRankInfo.points;
+        return {
+            diff: xpDiff,
+            name: nextRankStudent.name
+        };
+    };
+
+    const xpToNext = getXpToNextRank();
+
     return (
-        <div className="relative min-h-[calc(100vh-80px)] overflow-hidden bg-slate-50 font-outfit">
-            
-            {/* Content Wrapper with Padding */}
-            <div className="relative z-10 p-4 md:p-8">
-                {/* Header Section (Period Toggle Only) */}
-                <div className="flex justify-end mb-10">
-
-                {/* Period Toggle */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm"
-                >
-                    {[
-                        { id: 'daily', label: 'Day', data: dailyLeaderboard },
-                        { id: 'weekly', label: 'Week', data: weeklyLeaderboard },
-                        { id: 'all_time', label: 'All Time', data: allTimeLeaderboard }
-                    ].map((p) => (
-                        <button
-                            key={p.id}
-                            onClick={() => handlePeriodChange(p.id, p.data)}
-                            className={`px-8 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${leaderboardPeriod === p.id
-                                ? 'bg-slate-900 text-white shadow-lg'
-                                : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'
-                                }`}
-                        >
-                            {p.label}
-                        </button>
-                    ))}
-                </motion.div>
-            </div>
-
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-screen-2xl mx-auto items-start">
+        <div className="min-h-[calc(100vh-80px)] bg-slate-50 font-outfit text-slate-800 pt-8 pb-24 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
                 
-                {/* LEFT SIDE: PODIUM FRAMES (Vertical Champions) */}
-                <div className="lg:col-span-4 flex flex-col space-y-3">
+                {/* 🏆 LEADERBOARD PANEL (Matching Dashboard Mini-Leaderboard Style) */}
+                <div className="bg-white border border-slate-200/90 rounded-[8px] p-5 shadow-[0_16px_32px_rgba(0,0,0,0.02)] flex flex-col space-y-4">
+                    
+                    {/* Subheader Date & Period Switcher Banner */}
+                    <div className="bg-indigo-50/60 text-slate-700 py-3 px-4 rounded-[8px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-black border border-indigo-50">
+                        <div className="flex items-center gap-2">
+                            <Trophy size={16} className="text-[#06b6d4] shrink-0" />
+                            <span className="uppercase tracking-wider text-slate-800">
+                                {leaderboardPeriod === 'daily' ? "Today's Rankings" : leaderboardPeriod === 'weekly' ? "Weekly Rankings" : "All Time Rankings"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-semibold px-2 py-0.5 bg-slate-200/50 rounded-full border border-slate-200/20 shrink-0">
+                                {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                            </span>
+                        </div>
+
+                        {/* Tab Switcher - Consolidated Beside the title */}
+                        <div className="bg-white p-0.5 rounded-[8px] border border-slate-200/60 flex items-center shrink-0 w-full sm:w-auto sm:min-w-[240px]">
+                            {[
+                                { id: 'daily', label: 'Day', data: dailyLeaderboard },
+                                { id: 'weekly', label: 'Week', data: weeklyLeaderboard },
+                                { id: 'all_time', label: 'All Time', data: allTimeLeaderboard }
+                            ].map((p) => {
+                                const isActive = leaderboardPeriod === p.id;
+                                return (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => handlePeriodChange(p.id, p.data)}
+                                        className={`flex-1 py-1 text-center text-[10px] font-black rounded-[6px] transition-all ${
+                                            isActive 
+                                                ? 'bg-slate-100 text-slate-800 border border-slate-200/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]' 
+                                                : 'text-slate-450 hover:text-slate-650'
+                                        }`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-20">
-                            <motion.div 
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                className="w-12 h-12 border-4 border-slate-200 border-t-slate-800 rounded-full mb-4 shadow-sm"
-                            />
-                            <p className="text-slate-500 font-bold text-xs tracking-widest uppercase animate-pulse">Summoning Champions...</p>
+                        <div className="flex flex-col items-center justify-center py-32 space-y-3">
+                            <div className="w-8 h-8 border-2 border-slate-200 border-t-[#06b6d4] rounded-full animate-spin" />
+                            <p className="text-slate-400 font-bold text-[10px] tracking-widest uppercase">Loading Rankings...</p>
                         </div>
                     ) : (
-                        <>
-                            {/* Rank 1 Frame */}
-                            {leaderboard[0] && (
-                                <motion.div 
-                                    initial={{ opacity: 0, x: -50 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="flex items-center gap-4 p-4 bg-white border border-yellow-200 rounded-[2rem] relative overflow-hidden shadow-xl"
-                                >
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 blur-3xl -mr-16 -mt-16" />
-                                    <div className="relative h-24 w-24 flex-shrink-0 z-10">
-                                        <img src={rank1Frame} className="relative z-20 h-full w-full object-contain" alt="Frame" />
-                                        <div className="absolute inset-0 flex items-center justify-center z-10">
-                                            <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-yellow-400 bg-slate-100 -mt-1.5">
-                                                {leaderboard[0].profilePicture ? (
-                                                    <img src={leaderboard[0].profilePicture} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-yellow-500 text-white text-lg font-black">{leaderboard[0].name?.charAt(0)}</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="relative z-10">
-                                        <p className="text-slate-900 font-black uppercase text-sm tracking-tight mb-0.5">{leaderboard[0].name}</p>
-                                        <p className="text-[9px] font-black text-yellow-600 uppercase tracking-[0.2em] mb-2">Grand Champion</p>
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-yellow-500 px-2 py-0.5 rounded text-white font-black text-[9px]">RANK 1</div>
-                                            <div className="text-base font-black text-slate-900">{leaderboard[0].points.toLocaleString()} <span className="text-[9px] text-slate-400 font-bold">XP</span></div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
+                        <div className="flex flex-col space-y-4">
+                            {/* Leaderboard List */}
+                            <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-0.5 pb-8 custom-clean-scrollbar">
+                                <style>{`
+                                    .custom-clean-scrollbar::-webkit-scrollbar {
+                                        width: 5px;
+                                    }
+                                    .custom-clean-scrollbar::-webkit-scrollbar-track {
+                                        background: #f8fafc;
+                                    }
+                                    .custom-clean-scrollbar::-webkit-scrollbar-thumb {
+                                        background: #cbd5e1;
+                                        border-radius: 5px;
+                                    }
+                                `}</style>
 
-                            {/* Rank 2 Frame */}
-                            {leaderboard[1] && (
-                                <motion.div 
-                                    initial={{ opacity: 0, x: -50 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.1 }}
-                                    className="flex items-center gap-4 p-3 bg-white border border-slate-200 rounded-[2rem] relative overflow-hidden shadow-lg"
-                                >
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-400/5 blur-2xl -mr-12 -mt-12" />
-                                    <div className="relative h-20 w-20 flex-shrink-0 z-10">
-                                        <img src={rank2Frame} className="relative z-20 h-full w-full object-contain" alt="Frame" />
-                                        <div className="absolute inset-0 flex items-center justify-center z-10">
-                                            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-slate-300 bg-slate-100">
-                                                {leaderboard[1].profilePicture ? (
-                                                    <img src={leaderboard[1].profilePicture} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-slate-400 text-white text-base font-black">{leaderboard[1].name?.charAt(0)}</div>
-                                                )}
-                                            </div>
-                                        </div>
+                                {leaderboard.length === 0 ? (
+                                    <div className="text-center py-16 text-slate-400 text-xs font-semibold">
+                                        No active contenders present for this period.
                                     </div>
-                                    <div className="relative z-10">
-                                        <p className="text-slate-800 font-black uppercase text-xs tracking-tight mb-0.5">{leaderboard[1].name}</p>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">Legendary Contender</p>
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-black text-[9px] border border-slate-200">RANK 2</div>
-                                            <div className="text-sm font-black text-slate-700">{leaderboard[1].points.toLocaleString()} <span className="text-[9px] text-slate-400 font-bold">XP</span></div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
+                                ) : (
+                                    <AnimatePresence mode="popLayout">
+                                        {leaderboard.slice(0, 10).map((student, idx) => {
+                                            const isMe = user && student.id === user._id;
+                                            
+                                            let rowStyle = 'bg-white border border-slate-100 hover:bg-slate-50';
+                                            let rankColor = 'text-slate-400';
+                                            let badgeStyle = 'bg-indigo-50 border-indigo-100/50';
+                                            let badgeIconColor = 'text-indigo-650 fill-indigo-200';
+                                            let badgeTextColor = 'text-indigo-755';
 
-                            {/* Rank 3 Frame */}
-                            {leaderboard[2] && (
-                                <motion.div 
-                                    initial={{ opacity: 0, x: -50 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.2 }}
-                                    className="flex items-center gap-4 p-3 bg-white border border-slate-200 rounded-[2rem] relative overflow-hidden shadow-lg"
-                                >
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-400/5 blur-2xl -mr-12 -mt-12" />
-                                    <div className="relative h-20 w-20 flex-shrink-0 z-10">
-                                        <img src={rank3Frame} className="relative z-20 h-full w-full object-contain" alt="Frame" />
-                                        <div className="absolute inset-0 flex items-center justify-center z-10">
-                                            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-orange-200 bg-slate-100">
-                                                {leaderboard[2].profilePicture ? (
-                                                    <img src={leaderboard[2].profilePicture} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-orange-400 text-white text-base font-black">{leaderboard[2].name?.charAt(0)}</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="relative z-10">
-                                        <p className="text-slate-800 font-black uppercase text-xs tracking-tight mb-0.5">{leaderboard[2].name}</p>
-                                        <p className="text-[8px] font-black text-orange-600/50 uppercase tracking-[0.2em] mb-1.5">Elite Contender</p>
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-orange-50 px-2 py-0.5 rounded text-orange-600 font-black text-[9px] border border-orange-100">RANK 3</div>
-                                            <div className="text-sm font-black text-slate-700">{leaderboard[2].points.toLocaleString()} <span className="text-[9px] text-slate-400 font-bold">XP</span></div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </>
-                    )}
-                </div>
+                                            if (isMe) {
+                                                rowStyle = 'bg-[#d2f8ff] border-l-4 border-[#06b6d4] shadow-sm';
+                                                rankColor = 'text-[#06b6d4]';
+                                                badgeStyle = 'bg-[#b5f5ff] border-[#06b6d4]/20';
+                                                badgeIconColor = 'text-[#06b6d4] fill-cyan-100';
+                                                badgeTextColor = 'text-[#06b6d4] font-black';
+                                            } else if (idx === 0) {
+                                                rowStyle = 'bg-[#fff1f2] border-l-4 border-[#f43f5e] shadow-sm';
+                                                rankColor = 'text-[#e11d48] font-extrabold';
+                                                badgeStyle = 'bg-[#ffe4e6] border-[#fecdd3]';
+                                                badgeIconColor = 'text-[#e11d48] fill-rose-100';
+                                                badgeTextColor = 'text-[#e11d48] font-black';
+                                            } else if (idx === 1) {
+                                                rowStyle = 'bg-[#f5f3ff] border-l-4 border-[#8b5cf6] shadow-sm';
+                                                rankColor = 'text-[#7c3aed] font-extrabold';
+                                                badgeStyle = 'bg-[#ede9fe] border-[#ddd6fe]';
+                                                badgeIconColor = 'text-[#7c3aed] fill-violet-100';
+                                                badgeTextColor = 'text-[#7c3aed] font-black';
+                                            } else if (idx === 2) {
+                                                rowStyle = 'bg-[#f0fdfa] border-l-4 border-[#14b8a6] shadow-sm';
+                                                rankColor = 'text-[#0d9488] font-extrabold';
+                                                badgeStyle = 'bg-[#ccfbf1] border-[#99f6e4]';
+                                                badgeIconColor = 'text-[#0d9488] fill-teal-100';
+                                                badgeTextColor = 'text-[#0d9488] font-black';
+                                            }
 
-                {/* RIGHT SIDE: TOP 10 LIST */}
-                <div className="lg:col-span-8 flex flex-col w-full">
-                    <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden flex flex-col shadow-xl max-h-[calc(100vh-280px)]">
-                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter flex items-center gap-2">
-                                <Star className="text-yellow-500 fill-yellow-500 w-4 h-4" />
-                                Top Contenders
-                            </h3>
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">Top 10 Only</span>
-                        </div>
+                                            return (
+                                                <motion.div
+                                                    key={student.id || idx}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    className={`flex items-center justify-between p-3.5 rounded-[8px] transition-all ${rowStyle}`}
+                                                >
+                                                    <div className="flex items-center gap-4 min-w-0">
+                                                        
+                                                        {/* Rank Number */}
+                                                        <span className={`text-xs font-black w-6 text-center ${rankColor}`}>
+                                                            #{idx + 1}
+                                                        </span>
 
-                        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                            <AnimatePresence mode="popLayout">
-                                {leaderboard.slice(3, 10).map((student, idx) => (
-                                    <motion.div
-                                        key={student.id}
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className={`group relative flex items-center justify-between p-3 rounded-xl transition-all duration-300 ${user && user._id === student.id
-                                            ? 'bg-indigo-50 border border-indigo-100 shadow-sm'
-                                            : 'hover:bg-slate-50 border border-transparent hover:border-slate-100'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="relative">
-                                                <span className="text-sm font-black w-6 text-center block text-slate-300">
-                                                    {idx + 4}
-                                                </span>
-                                            </div>
-
-                                            <div className="relative">
-                                                <div className="h-10 w-10 rounded-full overflow-hidden border-2 shadow-sm transition-transform duration-300 group-hover:scale-110 border-slate-100">
-                                                    {student.profilePicture ? (
-                                                        <img src={student.profilePicture} alt={student.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400">
-                                                            {student.name?.charAt(0)}
+                                                        {/* Avatar */}
+                                                        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                                                            {student.profilePicture ? (
+                                                                <img 
+                                                                    src={student.profilePicture} 
+                                                                    alt={student.name}
+                                                                    className="w-full h-full object-cover"
+                                                                    crossOrigin="anonymous"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-xs font-black text-slate-550 bg-slate-200">
+                                                                    {student.name?.charAt(0) || 'S'}
+                                                                </div>
+                                                            )}
                                                         </div>
+
+                                                        {/* Name */}
+                                                        <span className={`text-xs sm:text-sm font-bold truncate uppercase tracking-tight ${
+                                                            isMe ? 'text-slate-900 font-black' : 'text-slate-700 font-medium'
+                                                        }`}>
+                                                            {student.name || 'Student'}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Points Star Badge matching Dashboard */}
+                                                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border shrink-0 ${badgeStyle}`}>
+                                                        <Award size={12} className={badgeIconColor} />
+                                                        <span className={`text-[12px] ${badgeTextColor}`}>
+                                                            {student.points || 0}
+                                                        </span>
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </AnimatePresence>
+                                )}
+                            </div>
+
+                            {/* 👤 PERSONAL USER GLORY PANEL */}
+                            {user && userRankInfo && !isUserInTopTen && (
+                                <div className="pt-2 border-t border-slate-100">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-[8px] bg-[#d2f8ff] border-l-4 border-[#06b6d4] shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative shrink-0">
+                                                <div className="h-10 w-10 rounded-full border border-[#06b6d4]/40 overflow-hidden bg-slate-100">
+                                                    {user.profilePicture ? (
+                                                        <img src={user.profilePicture} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-[#06b6d4] text-white text-base font-black">{user.name?.charAt(0)}</div>
                                                     )}
                                                 </div>
+                                                <div className="absolute -top-1.5 -right-1.5 bg-[#06b6d4] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-white shadow-sm">
+                                                    #{userRankInfo.rank}
+                                                </div>
                                             </div>
-
                                             <div>
-                                                <p className="text-xs font-black uppercase tracking-tight transition-colors text-slate-900 group-hover:text-indigo-600">
-                                                    {student.name}
-                                                </p>
-                                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                                    <Zap size={8} className="text-blue-500 fill-blue-500" />
-                                                    Active Learner
-                                                </p>
+                                                <p className="text-[9px] font-black text-[#06b6d4] uppercase tracking-wider mb-0.5">Your Position</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-tight">{user.name}</p>
+                                                    <span className="bg-white/60 text-[#06b6d4] border border-[#06b6d4]/20 text-[8px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0">
+                                                        {user.planTier || 'Basic'} Tier
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg group-hover:border-indigo-200 transition-colors">
-                                            <span className="text-xs font-black transition-colors text-slate-600">
-                                                {student.points.toLocaleString()} <span className="text-[8px] font-bold opacity-60 ml-0.5">XP</span>
-                                            </span>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </div>
+                                        <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-200/30">
+                                            {xpToNext ? (
+                                                <div className="text-left sm:text-right">
+                                                    <p className="text-[9px] font-black text-indigo-605 uppercase tracking-wider flex items-center gap-1 sm:justify-end">
+                                                        <ArrowUp size={10} /> Progress Alert
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">
+                                                        Collect <span className="text-[#06b6d4] font-extrabold">{xpToNext.diff} XP</span> to overtake <span className="text-slate-800 font-bold">{xpToNext.name.split(' ')[0]}</span>
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="text-left sm:text-right">
+                                                    <p className="text-[9px] font-black text-[#06b6d4] uppercase tracking-wider">Top Standings</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium">You are in the top ranks of the standings!</p>
+                                                </div>
+                                            )}
 
-                        {/* Current User Summary Card */}
-                        {user && userRankInfo && (
-                            <motion.div
-                                initial={{ y: 50 }}
-                                animate={{ y: 0 }}
-                                className="p-4 border-t border-slate-100 bg-slate-50/80"
-                            >
-                                <div className="flex items-center justify-between p-3 rounded-2xl bg-white border border-indigo-200 shadow-md">
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative">
-                                            <div className="h-10 w-10 rounded-full border-2 border-indigo-400 overflow-hidden relative z-10 shadow-sm">
-                                                {user.profilePicture ? (
-                                                    <img src={user.profilePicture} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-indigo-500 text-white text-base font-black">{user.name?.charAt(0)}</div>
-                                                )}
-                                            </div>
-                                            <div className="absolute -top-1.5 -right-1.5 bg-indigo-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border-2 border-white z-20">
-                                                #{userRankInfo.rank}
+                                            <div className="text-right shrink-0">
+                                                <p className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-0.5">Total XP</p>
+                                                <p className="text-lg font-black text-slate-900 leading-none">
+                                                    {userRankInfo.points.toLocaleString()} <span className="text-[10px] text-[#06b6d4] font-bold ml-0.5 uppercase">XP</span>
+                                                </p>
                                             </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[8px] font-bold text-indigo-500 uppercase tracking-[0.2em] mb-0.5">Your Glory</p>
-                                            <p className="text-sm font-black text-slate-900 uppercase tracking-tight">You</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total XP</p>
-                                        <p className="text-xl font-black text-slate-900 leading-none">
-                                            {userRankInfo.points.toLocaleString()} <span className="text-[10px] text-slate-400 ml-0.5 uppercase">XP</span>
-                                        </p>
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
-                    </div>
+                            )}
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
 };
 
 export default Leaderboard;

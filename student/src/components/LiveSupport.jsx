@@ -145,7 +145,6 @@ const LiveSupport = () => {
                                 className="w-full bg-white/10 border border-white/20 rounded-lg py-1.5 pl-3 pr-8 text-[11px] font-bold text-white outline-none focus:bg-white/20 transition-all appearance-none cursor-pointer"
                             >
                                 <option value="general" className="text-slate-800">👋 General Support</option>
-                                <option value="placement" className="text-slate-800">💼 Placement Assistance</option>
                                 <option value="technical" className="text-slate-800">💻 Technical Issues</option>
                                 <option value="fees" className="text-slate-800">💰 Fees & Payments</option>
                             </select>

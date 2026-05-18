@@ -62,7 +62,7 @@ const MyCourses = () => {
                                 ...c,
                                 isBonus: e.isBonus,
                                 enrollmentId: e._id,
-                                enrollmentProgress: e.progress
+                                enrollmentProgress: c.progress ?? e.progress
                             });
                         });
                     } else if (e.courseId) {
@@ -107,39 +107,25 @@ const MyCourses = () => {
         }
     };
 
-    // Helper: Calculate Progress based on Time
+    // Helper: Calculate Progress based on Time/Curriculum
     const calculateBatchProgress = (course) => {
-        if (!studentData?.startDate || !course.duration) return { percent: 0, text: 'Start Learning' };
-
-        const start = new Date(studentData.startDate);
-        const today = new Date();
-
-        // Calculate days passed
-        const diffTime = Math.abs(today - start);
-        const daysPassed = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        // Parse Duration (e.g., "3 Months", "12 Weeks")
-        let totalDays = 90; // Default
-        const durationStr = course.duration.toLowerCase();
-
-        if (durationStr.includes('month')) {
-            const months = parseInt(durationStr) || 3;
-            totalDays = months * 30;
-        } else if (durationStr.includes('week')) {
-            const weeks = parseInt(durationStr) || 12;
-            totalDays = weeks * 7;
-        } else if (durationStr.includes('day')) {
-            totalDays = parseInt(durationStr) || 90;
-        }
-
-        // Cap at 100%. Priority order: 
-        // 1. Enrollment-specific progress (most accurate)
-        // 2. Dashboard daily progress (fallback)
         let percent = course.enrollmentProgress ?? realProgress ?? 0;
+
+        let daysPassed = 0;
+        if (studentData?.startDate) {
+            try {
+                const start = new Date(studentData.startDate);
+                const today = new Date();
+                const diffTime = Math.abs(today - start);
+                daysPassed = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            } catch (err) {
+                console.error('Error parsing startDate:', err);
+            }
+        }
 
         return {
             percent,
-            text: `${percent}% Completed`,
+            text: percent > 0 ? `${percent}% Completed` : 'Start Learning',
             daysPassed
         };
     };

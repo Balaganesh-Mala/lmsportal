@@ -283,7 +283,6 @@ const Layout = () => {
         { icon: (p) => <AiOutlineDollarCircle {...p} />, label: 'Payments', path: '/payments', accessKey: 'payments' },
         { icon: (p) => <AiOutlineCrown {...p} />, label: 'Subscription', path: '/subscription', accessKey: 'dashboard' },
         { icon: (p) => <AiOutlineGift {...p} />, label: 'Reward Store', path: '/reward-store', accessKey: 'dashboard' },
-        { icon: (p) => <AiOutlineUser {...p} />, label: 'Profile', path: '/profile', accessKey: 'profile' },
         { icon: (p) => <AiOutlineSetting {...p} />, label: 'Settings', path: '/settings', accessKey: 'settings' },
     ];
 
@@ -523,7 +522,53 @@ const Layout = () => {
                     ))}
                 </nav>
 
-                {/* Sidebar Footer — REMOVED AS REQUESTED */}
+                {/* Sidebar Footer - Dedicated Profile Tab Card */}
+                {user && (
+                    <div className="p-4 border-t border-slate-800/80 bg-slate-900/40 mt-auto shrink-0">
+                        <NavLink
+                            to="/profile"
+                            onClick={() => setSidebarOpen(false)}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 p-2 rounded-xl transition-all duration-300 group border ${
+                                    isActive
+                                        ? 'bg-gradient-to-r from-orange-500 to-orange-400 border-orange-500 text-white shadow-md shadow-orange-500/10'
+                                        : 'hover:bg-slate-850/60 border-slate-800 text-slate-350 hover:text-white'
+                                }`
+                            }
+                        >
+                            <div className="relative shrink-0">
+                                {user.profilePicture ? (
+                                    <img
+                                        src={user.profilePicture}
+                                        alt={user.name}
+                                        className="w-9 h-9 rounded-full object-cover border border-white/20"
+                                        crossOrigin="anonymous"
+                                    />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-black text-sm border border-slate-700">
+                                        {user.name?.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
+                            </div>
+
+                            {!collapsed && (
+                                <div className="flex-1 min-w-0 flex flex-col text-left">
+                                    <span className="text-[13px] font-bold truncate uppercase tracking-tight leading-tight text-white">
+                                        {user.name}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 group-[.active-nav]:text-orange-100 font-semibold uppercase tracking-wider mt-0.5">
+                                        {user.planTier || 'Basic'} Tier
+                                    </span>
+                                </div>
+                            )}
+
+                            {!collapsed && (
+                                <AiOutlineUser size={14} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+                            )}
+                        </NavLink>
+                    </div>
+                )}
             </aside>
 
             {/* Main Content Wrapper */}
@@ -541,7 +586,7 @@ const Layout = () => {
                     location.pathname.includes('/playground')
                         ? 'p-0 overflow-hidden'
                         : location.pathname.includes('/leaderboard')
-                            ? 'p-0 overflow-hidden'
+                            ? 'p-0 overflow-y-auto'
                             : location.pathname.includes('/dashboard')
                                 ? 'p-0 overflow-y-auto xl:overflow-hidden'
                                 : 'p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto'

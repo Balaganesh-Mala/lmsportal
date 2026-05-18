@@ -381,33 +381,90 @@ router.get('/student/:studentId/enrollment', async (req, res) => {
                 enrollmentDate: u.unlockedAt
             }));
 
-        // Merge both lists
-        const allEnrollments = [...filteredBatchEnrollments, ...directEnrollments];
+        // Fetch student to check for legacy courseName
+        let legacyEnrollments = [];
+        const student = await Student.findById(req.params.studentId);
+        if (student && student.courseName) {
+            const course = await Course.findOne({
+                title: { $regex: new RegExp(`^${student.courseName.trim()}$`, 'i') }
+            });
+            if (course) {
+                const courseIdStr = course._id.toString();
+                // Check if this course is already covered by batchCourseIds or direct enrollments
+                const isAlreadyBatch = batchCourseIds.has(courseIdStr);
+                const isAlreadyDirect = directEnrollments.some(d => d.courseId && (d.courseId._id || d.courseId).toString() === courseIdStr);
+                
+                if (!isAlreadyBatch && !isAlreadyDirect) {
+                    const mongoose = require('mongoose');
+                    legacyEnrollments.push({
+                        _id: new mongoose.Types.ObjectId(),
+                        studentId: student._id,
+                        courseId: course,
+                        batchId: null,
+                        isBonus: false,
+                        status: 'active',
+                        enrollmentDate: student.createdAt,
+                        isLegacy: true
+                    });
+                }
+            }
+        }
+
+        // Merge all lists
+        const allEnrollments = [...filteredBatchEnrollments, ...directEnrollments, ...legacyEnrollments];
 
         const enrollmentsWithProgress = await Promise.all(allEnrollments.map(async (enrollment) => {
-            const courseId = enrollment.courseId?._id || enrollment.courseId;
+            const enrollmentObj = enrollment.toObject ? enrollment.toObject() : enrollment;
             let progress = 0;
             
-            if (courseId) {
-                try {
-                    const modules = await Module.find({ courseId }).select('_id');
-                    const moduleIds = modules.map(m => m._id);
-                    const totalTopics = await Topic.countDocuments({ moduleId: { $in: moduleIds } });
-                    const completedTopics = await Progress.countDocuments({
-                        studentId: req.params.studentId,
-                        courseId,
-                        completed: true
-                    });
-                    if (totalTopics > 0) {
-                        progress = Math.min(100, Math.round((completedTopics / totalTopics) * 100));
+            if (enrollmentObj.batchId && enrollmentObj.batchId.courses) {
+                const coursesWithProgress = await Promise.all(enrollmentObj.batchId.courses.map(async (course) => {
+                    const courseId = course._id || course;
+                    let courseProgress = 0;
+                    try {
+                        const modules = await Module.find({ courseId }).select('_id');
+                        const moduleIds = modules.map(m => m._id);
+                        const totalTopics = await Topic.countDocuments({ moduleId: { $in: moduleIds } });
+                        const completedTopics = await Progress.countDocuments({
+                            studentId: req.params.studentId,
+                            courseId,
+                            completed: true
+                        });
+                        if (totalTopics > 0) {
+                            courseProgress = Math.min(100, Math.round((completedTopics / totalTopics) * 100));
+                        }
+                    } catch (err) {
+                        console.error('Error calculating enrollment progress for course:', err);
                     }
-                } catch (err) {
-                    console.error('Error calculating enrollment progress:', err);
+                    return {
+                        ...(course.toObject ? course.toObject() : course),
+                        progress: courseProgress
+                    };
+                }));
+                enrollmentObj.batchId.courses = coursesWithProgress;
+            } else {
+                const courseId = enrollmentObj.courseId?._id || enrollmentObj.courseId;
+                if (courseId) {
+                    try {
+                        const modules = await Module.find({ courseId }).select('_id');
+                        const moduleIds = modules.map(m => m._id);
+                        const totalTopics = await Topic.countDocuments({ moduleId: { $in: moduleIds } });
+                        const completedTopics = await Progress.countDocuments({
+                            studentId: req.params.studentId,
+                            courseId,
+                            completed: true
+                        });
+                        if (totalTopics > 0) {
+                            progress = Math.min(100, Math.round((completedTopics / totalTopics) * 100));
+                        }
+                    } catch (err) {
+                        console.error('Error calculating enrollment progress:', err);
+                    }
                 }
             }
             
             return {
-                ...(enrollment.toObject ? enrollment.toObject() : enrollment),
+                ...enrollmentObj,
                 progress
             };
         }));
