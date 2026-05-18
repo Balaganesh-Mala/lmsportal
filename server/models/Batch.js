@@ -6,11 +6,10 @@ const BatchSchema = new mongoose.Schema({
         required: [true, 'Batch name is required'],
         trim: true
     },
-    courseId: {
+    courses: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Course',
-        required: [true, 'Course is required']
-    },
+        ref: 'Course'
+    }],
     startDate: {
         type: Date,
         required: [true, 'Start date is required']

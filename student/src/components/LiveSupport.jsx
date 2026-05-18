@@ -121,7 +121,7 @@ const LiveSupport = () => {
     if (!student) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
+        <div className="fixed bottom-24 lg:bottom-6 right-6 z-[100] flex flex-col items-end">
             {/* Chat Window */}
             {isOpen && (
                 <div className="mb-4 w-[350px] sm:w-[400px] h-[500px] bg-white rounded-[8px] shadow-2xl flex flex-col overflow-hidden border border-slate-100 animate-in slide-in-from-bottom-5 duration-300">

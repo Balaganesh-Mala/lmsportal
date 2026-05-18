@@ -86,6 +86,7 @@ const BatchStudents = () => {
     const [newBatchId, setNewBatchId] = useState('');
     const [enrollDate, setEnrollDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+    const [selectedMoveStudents, setSelectedMoveStudents] = useState([]);
     const [saving, setSaving] = useState(false);
     const [studentSearch, setStudentSearch] = useState('');
     const [feeStatusFilter, setFeeStatusFilter] = useState('All'); 
@@ -176,18 +177,25 @@ const BatchStudents = () => {
 
     const handleChangeBatch = async (e) => {
         e.preventDefault();
-        if (!newBatchId || !selectedStudent) return;
+        if (!newBatchId) return;
         setSaving(true);
         try {
-            await axios.put(`${import.meta.env.VITE_API_URL}/api/batches/student/change-batch`, {
-                studentId: selectedStudent.studentId?._id,
-                newBatchId
-            });
-            toast.success('Student moved to new batch');
+            const payload = { newBatchId, oldBatchId: batchId };
+            if (selectedMoveStudents.length > 0 && !selectedStudent) {
+                payload.studentIds = selectedMoveStudents;
+            } else if (selectedStudent) {
+                payload.studentId = selectedStudent.studentId?._id;
+            } else {
+                return;
+            }
+
+            const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/batches/student/change-batch`, payload);
+            toast.success(res.data.message || 'Student(s) moved to new batch');
             setIsChangeBatchOpen(false);
+            setSelectedMoveStudents([]);
             fetchEnrollments();
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to move student');
+            toast.error(err.response?.data?.message || 'Failed to move student(s)');
         } finally {
             setSaving(false);
         }
@@ -299,8 +307,17 @@ const BatchStudents = () => {
 
     const openChangeBatch = (enrollment) => {
         setSelectedStudent(enrollment);
+        setSelectedMoveStudents([]);
         setNewBatchId('');
-        fetchBatchesForCourse(enrollment.courseId?._id, setAllBatches);
+        fetchBatchesForCourse('', setAllBatches);
+        setIsChangeBatchOpen(true);
+    };
+
+    const openBulkChangeBatch = () => {
+        if (selectedMoveStudents.length === 0) return toast.error('Select at least one student to move');
+        setSelectedStudent(null);
+        setNewBatchId('');
+        fetchBatchesForCourse('', setAllBatches);
         setIsChangeBatchOpen(true);
     };
 
@@ -430,6 +447,14 @@ const BatchStudents = () => {
                 </div>
                 
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+                    {selectedMoveStudents.length > 0 && (
+                        <button
+                            onClick={openBulkChangeBatch}
+                            className="mr-2 px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-1 shrink-0"
+                        >
+                            <RefreshCw size={14} /> Move Selected ({selectedMoveStudents.length})
+                        </button>
+                    )}
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">Fee Status:</span>
                     <div className="flex bg-gray-100 p-1 rounded-lg shrink-0">
                         {['All', 'Paid', 'Pending', 'Overdue'].map((status) => (
@@ -467,6 +492,17 @@ const BatchStudents = () => {
                     <table className="w-full min-w-[900px]">
                         <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
+                                <th className="px-6 py-3 w-12 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 text-indigo-600 rounded"
+                                        checked={selectedMoveStudents.length > 0 && selectedMoveStudents.length === filteredEnrollments.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setSelectedMoveStudents(filteredEnrollments.map(en => en.studentId?._id).filter(Boolean));
+                                            else setSelectedMoveStudents([]);
+                                        }}
+                                    />
+                                </th>
                                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
                                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
                                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Enrollment Date</th>
@@ -478,7 +514,7 @@ const BatchStudents = () => {
                         <tbody className="divide-y divide-gray-50">
                             {filteredEnrollments.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400 text-sm italic">
+                                    <td colSpan="7" className="px-6 py-12 text-center text-gray-400 text-sm italic">
                                         No students match the current filters.
                                     </td>
                                 </tr>
@@ -487,7 +523,19 @@ const BatchStudents = () => {
                                 const s = enrollment.studentId;
                                 if (!s) return null;
                                 return (
-                                    <tr key={enrollment._id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={enrollment._id} className={`hover:bg-gray-50 transition-colors ${selectedMoveStudents.includes(s._id) ? 'bg-indigo-50/50' : ''}`}>
+                                        <td className="px-6 py-4 text-center">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-indigo-600 rounded"
+                                                checked={selectedMoveStudents.includes(s._id)}
+                                                onChange={() => {
+                                                    setSelectedMoveStudents(prev => 
+                                                        prev.includes(s._id) ? prev.filter(id => id !== s._id) : [...prev, s._id]
+                                                    );
+                                                }}
+                                            />
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 {s.profilePicture ? (
@@ -649,7 +697,12 @@ const BatchStudents = () => {
                             <button onClick={() => setIsChangeBatchOpen(false)}><X size={22} className="text-gray-400" /></button>
                         </div>
                         <form onSubmit={handleChangeBatch} className="p-6 space-y-4">
-                            <p className="text-sm text-gray-600">Moving <strong>{selectedStudent?.studentId?.name}</strong> to a new batch</p>
+                            <p className="text-sm text-gray-600">
+                                {selectedStudent 
+                                    ? <>Moving <strong>{selectedStudent?.studentId?.name}</strong> to a new batch</>
+                                    : <>Moving <strong>{selectedMoveStudents.length} selected student(s)</strong> to a new batch</>
+                                }
+                            </p>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Select Target Batch</label>
                                 {allBatches.length === 0 ? (

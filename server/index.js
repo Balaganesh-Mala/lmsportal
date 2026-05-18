@@ -100,6 +100,9 @@ app.use('/api/rewards', require('./routes/rewardRoutes'));
 app.use('/api/study-materials', require('./routes/studyMaterialRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/support', require('./routes/supportRoutes'));
+app.use('/api/payment', require('./routes/paymentRoutes'));
+app.use('/api/subscription-plans', require('./routes/subscriptionPlanRoutes'));
+app.use('/api/coupons', require('./routes/couponRoutes'));
 
 // Course Module Routes
 app.use('/api', require('./routes/moduleRoutes'));

@@ -54,12 +54,26 @@ const MyCourses = () => {
                 const allCourses = coursesRes.data;
 
                 // 3. Map enrollments to course objects with isBonus flag
-                const mergedCourses = enrollments.map(e => ({
-                    ...e.courseId,
-                    isBonus: e.isBonus,
-                    enrollmentId: e._id,
-                    enrollmentProgress: e.progress
-                }));
+                let mergedCourses = [];
+                enrollments.forEach(e => {
+                    if (e.batchId && e.batchId.courses) {
+                        e.batchId.courses.forEach(c => {
+                            mergedCourses.push({
+                                ...c,
+                                isBonus: e.isBonus,
+                                enrollmentId: e._id,
+                                enrollmentProgress: e.progress
+                            });
+                        });
+                    } else if (e.courseId) {
+                        mergedCourses.push({
+                            ...e.courseId,
+                            isBonus: e.isBonus,
+                            enrollmentId: e._id,
+                            enrollmentProgress: e.progress
+                        });
+                    }
+                });
 
                 // 4. Fallback: Include legacy courseName if not already covered by enrollments
                 if (user.courseName) {

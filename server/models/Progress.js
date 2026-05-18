@@ -16,7 +16,19 @@ const ProgressSchema = new mongoose.Schema({
     ref: 'Topic',
     required: true
   },
-  completed: {
+  completed: { // Overall topic completion (legacy/summary)
+    type: Boolean,
+    default: false
+  },
+  videoCompleted: {
+    type: Boolean,
+    default: false
+  },
+  quizCompleted: {
+    type: Boolean,
+    default: false
+  },
+  assignmentCompleted: {
     type: Boolean,
     default: false
   },

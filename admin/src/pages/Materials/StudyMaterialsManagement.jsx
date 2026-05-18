@@ -31,7 +31,8 @@ const StudyMaterialsManagement = () => {
         thumbnail: null,
         linkUrl: '',
         videoUrl: '',
-        isProtected: true
+        isProtected: true,
+        requiredTier: 'Basic'
     });
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -87,7 +88,8 @@ const StudyMaterialsManagement = () => {
             thumbnail: null,
             linkUrl: item.linkUrl || '',
             videoUrl: item.videoUrl || '',
-            isProtected: item.isProtected
+            isProtected: item.isProtected,
+            requiredTier: item.requiredTier || 'Basic'
         });
         setShowModal(true);
     };
@@ -104,7 +106,8 @@ const StudyMaterialsManagement = () => {
             thumbnail: null,
             linkUrl: '',
             videoUrl: '',
-            isProtected: true
+            isProtected: true,
+            requiredTier: 'Basic'
         });
         setEditMode(false);
         setEditingId(null);
@@ -132,6 +135,7 @@ const StudyMaterialsManagement = () => {
             payload.append('contentType', formData.contentType);
             payload.append('targetType', formData.targetType);
             payload.append('isProtected', formData.isProtected);
+            payload.append('requiredTier', formData.requiredTier);
 
             if (formData.file) payload.append('file', formData.file);
             if (formData.thumbnail) payload.append('thumbnail', formData.thumbnail);
@@ -447,6 +451,26 @@ const StudyMaterialsManagement = () => {
                                     >
                                         <div className={`w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all transform ${formData.isProtected ? 'translate-x-4.5' : 'translate-x-0'}`} />
                                     </button>
+                                </div>
+
+                                {/* Access Tier Selection */}
+                                <div className="p-4 bg-indigo-50/30 rounded-xl border border-indigo-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <Layers size={16} className="text-indigo-600" />
+                                        <div className="text-left">
+                                            <span className="block text-xs font-bold text-slate-800 leading-none">Access Tier</span>
+                                            <span className="text-[10px] text-slate-500 mt-1 block">Tier required for students</span>
+                                        </div>
+                                    </div>
+                                    <select 
+                                        value={formData.requiredTier}
+                                        onChange={(e) => setFormData({ ...formData, requiredTier: e.target.value })}
+                                        className="bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold text-indigo-900 focus:outline-none"
+                                    >
+                                        <option value="Basic">Basic</option>
+                                        <option value="Intermediate">Intermediate</option>
+                                        <option value="Full">Full</option>
+                                    </select>
                                 </div>
 
                                 {/* Dynamic Input Area */}

@@ -44,7 +44,8 @@ const ManageCourseModules = () => {
         videoUrl: '',
         isUrlMode: false,
         notes: [],
-        externalNotes: [] // [{ name, url }]
+        externalNotes: [], // [{ name, url }]
+        requiredTier: 'Basic'
     };
     const [topicForm, setTopicForm] = useState(initialTopicState);
     const [uploading, setUploading] = useState(false);
@@ -384,7 +385,8 @@ const ManageCourseModules = () => {
                 videoUrl: topic.videoUrl || '',
                 isUrlMode: topic.videoUrl && (topic.videoUrl.includes('youtube') || topic.videoUrl.includes('youtu.be')),
                 notes: [],
-                externalNotes: []
+                externalNotes: [],
+                requiredTier: topic.requiredTier || 'Basic'
             });
         } else {
             setEditingTopic(null);
@@ -405,6 +407,7 @@ const ManageCourseModules = () => {
             formData.append('description', topicForm.description);
             formData.append('duration', topicForm.duration || 0);
             formData.append('classDate', topicForm.classDate);
+            formData.append('requiredTier', topicForm.requiredTier);
 
             // Order calculation for new topic
             if (!editingTopic) {
@@ -816,6 +819,22 @@ const ManageCourseModules = () => {
                                 )}
                             </div>
 
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                                <label className="block text-xs font-black text-amber-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <ShieldCheck size={14} /> Content Access Tier
+                                </label>
+                                <select 
+                                    value={topicForm.requiredTier}
+                                    onChange={(e) => setTopicForm({ ...topicForm, requiredTier: e.target.value })}
+                                    className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm font-bold text-amber-900 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+                                >
+                                    <option value="Basic">Basic (Premium Plan)</option>
+                                    <option value="Intermediate">Intermediate (Gold Plan)</option>
+                                    <option value="Full">Full (Platinum Plan)</option>
+                                </select>
+                                <p className="mt-1.5 text-[10px] text-amber-600/70 font-medium">Students with lower tiers won't be able to access this topic.</p>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Class Notes (PDFs/Images)</label>
                                 <input
@@ -845,7 +864,7 @@ const ManageCourseModules = () => {
                                             <div key={idx} className="flex items-center justify-between p-2 bg-indigo-50 border border-indigo-100 rounded-lg group/note">
                                                 <div className="flex items-center gap-2 text-xs text-indigo-700 font-medium truncate">
                                                     <Globe size={13} className="shrink-0" />
-                                                    <span className="truncate">{note.name}</span>
+                                                    <span className="truncate">{note.name} {note.type === 'google_ppt' ? '(PPT)' : '(Doc)'}</span>
                                                 </div>
                                                 <button
                                                     type="button"
@@ -864,7 +883,7 @@ const ManageCourseModules = () => {
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                                 <label className="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase tracking-tight">
                                     <Globe size={16} className="text-indigo-600" />
-                                    Add Google Doc (Preview Only)
+                                    Add Google Doc / PPT (Preview Only)
                                 </label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <input
@@ -875,24 +894,35 @@ const ManageCourseModules = () => {
                                     />
                                     <input
                                         type="url"
-                                        placeholder="Google Doc URL"
+                                        placeholder="Google Doc/PPT URL"
                                         id="extNoteUrl"
                                         className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:border-indigo-500 outline-none bg-white"
                                     />
+                                </div>
+                                <div className="flex gap-4 items-center">
+                                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="radio" name="extNoteType" value="google_doc" defaultChecked className="text-indigo-600" />
+                                        Google Doc
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="radio" name="extNoteType" value="google_ppt" className="text-indigo-600" />
+                                        Google PPT
+                                    </label>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => {
                                         const name = document.getElementById('extNoteName').value;
                                         const url = document.getElementById('extNoteUrl').value;
+                                        const type = document.querySelector('input[name="extNoteType"]:checked')?.value || 'google_doc';
                                         if (!name || !url) return toast.error('Please provide name and URL');
-                                        setTopicForm(p => ({ ...p, externalNotes: [...(p.externalNotes || []), { name, url }] }));
+                                        setTopicForm(p => ({ ...p, externalNotes: [...(p.externalNotes || []), { name, url, type }] }));
                                         document.getElementById('extNoteName').value = '';
                                         document.getElementById('extNoteUrl').value = '';
                                     }}
                                     className="w-full py-2 bg-white border-2 border-dashed border-indigo-200 text-indigo-600 rounded-lg font-bold text-xs hover:bg-indigo-50 hover:border-indigo-400 transition-all flex items-center justify-center gap-2"
                                 >
-                                    <Plus size={14} /> Attach Google Doc
+                                    <Plus size={14} /> Attach Document
                                 </button>
                                 <p className="text-[10px] text-slate-400 text-center font-medium">Documents will be shown as an embedded preview for students</p>
                             </div>
@@ -944,7 +974,7 @@ const ManageCourseModules = () => {
 
                         {/* Tabs */}
                         <div className="flex border-b border-gray-100 px-6">
-                            {[{ id: 'quiz', label: 'Quiz (MCQ)', icon: BookOpen }, { id: 'tasks', label: 'Tasks', icon: ClipboardList }, { id: 'assignment', label: 'Assignment', icon: FileText }].map(({ id, label, icon: Icon }) => (
+                            {[{ id: 'quiz', label: 'Quiz (MCQ)', icon: BookOpen }, { id: 'tasks', label: 'Tasks', icon: ClipboardList }, { id: 'assignment', label: 'Document / PDF', icon: FileText }].map(({ id, label, icon: Icon }) => (
                                 <button key={id} onClick={() => setContentTab(id)}
                                     className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${contentTab === id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
                                         }`}>
@@ -1067,18 +1097,18 @@ const ManageCourseModules = () => {
                                         </div>
                                     )}
 
-                                    {/* ── Assignment Tab ── */}
+                                    {/* ── Document / PDF Tab ── */}
                                     {contentTab === 'assignment' && (
                                         <div className="space-y-5">
-                                            {/* Existing assignments */}
+                                            {/* Existing documents */}
                                             {topicContent?.assignments?.length > 0 && (
                                                 <div className="space-y-2">
-                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Existing Assignments</p>
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Existing Documents</p>
                                                     {topicContent.assignments.map((assign, idx) => (
                                                         <div key={idx} className="flex items-start justify-between p-3 border border-gray-200 rounded-lg">
                                                             <div>
                                                                 <p className="text-sm font-medium text-gray-800">{assign.title}</p>
-                                                                {assign.questionUrl && <a href={assign.questionUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">Download Question Paper</a>}
+                                                                {assign.questionUrl && <a href={assign.questionUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">View Document</a>}
                                                             </div>
                                                             <button onClick={() => handleDeleteAssignment(idx)} className="text-red-400 hover:text-red-600 ml-3 flex-shrink-0">
                                                                 <Trash2 size={15} />
@@ -1088,30 +1118,30 @@ const ManageCourseModules = () => {
                                                 </div>
                                             )}
 
-                                            {/* Add new assignment */}
+                                            {/* Add new document */}
                                             <div className="space-y-3 border-t border-gray-100 pt-4">
-                                                <p className="text-sm font-semibold text-gray-700">Add New Assignment</p>
-                                                <input type="text" placeholder="Assignment title *" value={newAssignment.title}
+                                                <p className="text-sm font-semibold text-gray-700">Add New Document</p>
+                                                <input type="text" placeholder="Document title *" value={newAssignment.title}
                                                     onChange={e => setNewAssignment(p => ({ ...p, title: e.target.value }))}
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none" />
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-4 mb-1">
                                                         <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
                                                             <input type="radio" checked={!isAssignUrlMode} onChange={() => setIsAssignUrlMode(false)} className="text-indigo-600 focus:ring-indigo-500" />
-                                                            File Upload
+                                                            File Upload (PDF)
                                                         </label>
                                                         <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
                                                             <input type="radio" checked={isAssignUrlMode} onChange={() => setIsAssignUrlMode(true)} className="text-indigo-600 focus:ring-indigo-500" />
-                                                            Public URL
+                                                            Google Drive / Public Link
                                                         </label>
                                                     </div>
                                                     {isAssignUrlMode ? (
-                                                        <input type="url" placeholder="https://..." value={newAssignUrl} onChange={e => setNewAssignUrl(e.target.value)}
+                                                        <input type="url" placeholder="https://drive.google.com/..." value={newAssignUrl} onChange={e => setNewAssignUrl(e.target.value)}
                                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none" />
                                                     ) : (
                                                         <div className="flex items-center gap-3">
                                                             <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                                                                <Upload size={14} /> Question Paper (PDF, optional)
+                                                                <Upload size={14} /> Choose Document (PDF, Image)
                                                                 <input type="file" accept="application/pdf,image/*" className="hidden" onChange={e => setNewAssignFile(e.target.files[0])} />
                                                             </label>
                                                             {newAssignFile && <span className="text-xs text-gray-500 truncate max-w-[140px]">{newAssignFile.name}</span>}
@@ -1120,7 +1150,7 @@ const ManageCourseModules = () => {
                                                 </div>
                                                 <button onClick={handleAddAssignment} disabled={savingAssign}
                                                     className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                                                    {savingAssign ? 'Adding...' : <><Plus size={15} /> Add Assignment</>}
+                                                    {savingAssign ? 'Adding...' : <><Plus size={15} /> Add Document</>}
                                                 </button>
                                             </div>
                                         </div>

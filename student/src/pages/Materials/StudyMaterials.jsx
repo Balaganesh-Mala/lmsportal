@@ -6,11 +6,33 @@ import {
     ArrowLeft, MonitorPlay, Clock, Calendar, Bookmark
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import ProtectedViewer from '../../components/ProtectedViewer';
 import toast from 'react-hot-toast';
 
 const StudyMaterials = () => {
+    const navigate = useNavigate();
     const [materials, setMaterials] = useState([]);
+
+    // --- Subscription Tier Logic ---
+    const TIER_LEVELS = {
+        'Premium': 3,
+        'Platinum': 3,
+        'Full': 3,
+        'Intermediate': 2,
+        'Gold': 2,
+        'Basic': 1
+    };
+
+    const hasTierAccess = (requiredTier) => {
+        if (!user?.isSubscribed) return false;
+        const studentTier = (user.planTier || '').charAt(0).toUpperCase() + (user.planTier || '').slice(1).toLowerCase();
+        const reqTier = (requiredTier || 'Basic').charAt(0).toUpperCase() + (requiredTier || 'Basic').slice(1).toLowerCase();
+        
+        const studentLevel = TIER_LEVELS[studentTier] || 0;
+        const requiredLevel = TIER_LEVELS[reqTier] || 1;
+        return studentLevel >= requiredLevel;
+    };
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [selectedMaterial, setSelectedMaterial] = useState(null);
@@ -159,13 +181,22 @@ const StudyMaterials = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                     >
-                        {filteredMaterials.map((item) => (
-                            <motion.div
-                                key={item._id}
-                                layout
-                                onClick={() => setSelectedMaterial(item)}
-                                className="group relative bg-white border border-slate-100 rounded-[10px] overflow-hidden transition-all hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 cursor-pointer flex flex-col h-full"
-                            >
+                        {filteredMaterials.map((item) => {
+                            const isLocked = !hasTierAccess(item.requiredTier);
+                            return (
+                                <motion.div
+                                    key={item._id}
+                                    layout
+                                    onClick={() => {
+                                        if (isLocked) {
+                                            toast.error(`Subscribe to unlock this resource`, { icon: '🔒' });
+                                            navigate('/subscription');
+                                            return;
+                                        }
+                                        setSelectedMaterial(item);
+                                    }}
+                                    className={`group relative bg-white border border-slate-100 rounded-[10px] overflow-hidden transition-all hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 cursor-pointer flex flex-col h-full ${isLocked ? 'grayscale-[0.5] opacity-90' : ''}`}
+                                >
                                 {/* Thumbnail */}
                                 <div className="h-40 bg-slate-50 relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
                                     {item.thumbnailUrl ? (
@@ -178,6 +209,14 @@ const StudyMaterials = () => {
                                         </div>
                                     )}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                                    {isLocked && (
+                                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[4px] flex flex-col items-center justify-center p-4">
+                                            <div className="bg-white/90 p-3 rounded-2xl shadow-xl mb-3">
+                                                <Lock size={24} className="text-slate-900" />
+                                            </div>
+                                            <p className="text-white text-[10px] font-black uppercase tracking-[0.2em]">Subscribe to unlock</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="p-6 flex flex-col flex-1">
@@ -194,6 +233,11 @@ const StudyMaterials = () => {
                                         {item.isProtected && (
                                             <div className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-amber-100">
                                                 <Shield size={10} /> Protected
+                                            </div>
+                                        )}
+                                        {isLocked && (
+                                            <div className="px-3 py-1 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg shadow-slate-900/20">
+                                                <Shield size={10} className="text-amber-400" /> {item.requiredTier}
                                             </div>
                                         )}
                                     </div>
@@ -217,9 +261,10 @@ const StudyMaterials = () => {
                                             </span>
                                         )}
                                     </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
                     </motion.div>
                 ) : (
                     <motion.div

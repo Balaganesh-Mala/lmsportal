@@ -30,7 +30,8 @@ import {
   HelpCircle,
   Mic,
   Megaphone,
-  Headset
+  Headset,
+  Ticket
 } from 'lucide-react';
 
 
@@ -80,6 +81,9 @@ const navCategories = [
     icon: CreditCard,
     links: [
       { name: 'Fee Management', path: '/fees', icon: CreditCard },
+      { name: 'Subscription Plans', path: '/subscription-settings', icon: Layers },
+      { name: 'Subscribers', path: '/subscribers', icon: Users },
+      { name: 'Coupons', path: '/coupon-management', icon: Ticket },
       { name: 'Expenses', path: '/expenses', icon: Receipt }
     ]
   },

@@ -42,6 +42,9 @@ import InterviewScheduler from './pages/Interviews/InterviewScheduler';
 import StudyMaterialsManagement from './pages/Materials/StudyMaterialsManagement';
 import Announcements from './pages/Announcements';
 import SupportInbox from './pages/SupportInbox';
+import SubscriptionSettings from './pages/SubscriptionSettings';
+import Subscribers from './pages/Subscribers';
+import CouponManagement from './pages/CouponManagement';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -80,6 +83,9 @@ function App() {
           <Route path="attendance/qr-scanner" element={<QRScanner />} />
           <Route path="attendance/history" element={<AttendanceHistory />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="subscription-settings" element={<SubscriptionSettings />} />
+          <Route path="subscribers" element={<Subscribers />} />
+          <Route path="coupon-management" element={<CouponManagement />} />
           <Route path="trainers" element={<TrainerList />} />
           <Route path="trainers/add" element={<AddTrainer />} />
           <Route path="trainers/edit/:id" element={<AddTrainer />} />

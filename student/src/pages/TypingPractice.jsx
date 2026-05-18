@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
     RefreshCw,
     Play,
@@ -21,7 +22,8 @@ import {
     Activity,
     BarChart2,
     ArrowRight,
-    Monitor
+    Monitor,
+    Shield
 } from 'lucide-react';
 
 // Inline hand icon — avoids lucide-react's Hand conflicting with browser XRHand API
@@ -83,6 +85,7 @@ const playKeyClick = (type = 'click') => {
 };
 
 const TypingPractice = () => {
+    const navigate = useNavigate();
     // --- Core State ---
     const [category, setCategory] = useState('beginner');
     const [lessonIndex, setLessonIndex] = useState(0);
@@ -509,23 +512,41 @@ const TypingPractice = () => {
                                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                             className="absolute top-full left-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 z-20 overflow-hidden py-2"
                                         >
-                                            {Object.keys(typingLessons).map(cat => (
-                                                <button
-                                                    key={cat}
-                                                    onClick={() => { 
-                                                        setCategory(cat); 
-                                                        setLessonIndex(0); 
-                                                        setShowCategoryMenu(false);
-                                                        resetTest();
-                                                    }}
-                                                    className={`w-full text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all hover:pl-7 ${category === cat ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <span>{cat}</span>
-                                                        {category === cat && <div className="w-1.5 h-1.5 rounded-full bg-indigo-600"></div>}
-                                                    </div>
-                                                </button>
-                                            ))}
+                                            {Object.keys(typingLessons).map(cat => {
+                                                const TIER_MAP = { 'beginner': 1, 'intermediate': 2, 'advanced': 3 };
+                                                const GLOBAL_TIERS = { 'Premium': 3, 'Platinum': 3, 'Full': 3, 'Intermediate': 2, 'Gold': 2, 'Basic': 1 };
+                                                const rawTier = user?.planTier || '';
+                                                const normalizedTier = rawTier.charAt(0).toUpperCase() + rawTier.slice(1).toLowerCase();
+                                                const studentTier = GLOBAL_TIERS[normalizedTier] || 1;
+                                                const isLocked = TIER_MAP[cat.toLowerCase()] > studentTier;
+
+                                                return (
+                                                    <button
+                                                        key={cat}
+                                                        onClick={() => { 
+                                                            if (isLocked) {
+                                                                toast.error(`Subscribe to unlock ${cat} practice`, { icon: '🔒' });
+                                                                navigate('/subscription');
+                                                                return;
+                                                            }
+                                                            setCategory(cat); 
+                                                            setLessonIndex(0); 
+                                                            setShowCategoryMenu(false);
+                                                            resetTest();
+                                                        }}
+                                                        className={`w-full text-left px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all hover:pl-7 ${category === cat ? 'bg-indigo-50 text-indigo-600' : isLocked ? 'text-slate-300' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="flex items-center gap-2">
+                                                                {cat}
+                                                                {isLocked && <Shield size={10} className="text-amber-500" />}
+                                                            </span>
+                                                            {category === cat && <div className="w-1.5 h-1.5 rounded-full bg-indigo-600"></div>}
+                                                            {isLocked && <span className="text-[8px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full">UPGRADE</span>}
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
                                         </motion.div>
                                     </>
                                 )}

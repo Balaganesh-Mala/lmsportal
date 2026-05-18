@@ -10,6 +10,8 @@ const StudentSchema = new mongoose.Schema({
 
   address: { type: String },
   city: { type: String },
+  district: { type: String },
+  collegeName: { type: String },
 
   // Course Details
   courseName: { type: String },
@@ -21,6 +23,11 @@ const StudentSchema = new mongoose.Schema({
   typingLevel: { type: Number, default: 1 },
   lastCategory: { type: String, default: 'beginner' },
   lastLessonIndex: { type: Number, default: 0 },
+  
+  // Streak System
+  currentStreak: { type: Number, default: 0 },
+  highestStreak: { type: Number, default: 0 },
+  lastActiveDate: { type: Date },
 
   // Feature Access Controls
   access: {
@@ -41,6 +48,18 @@ const StudentSchema = new mongoose.Schema({
     type: String, 
     default: "Active",
     enum: ["Active", "Inactive", "Graduated", "Suspended"] 
+  },
+
+  // Trial & Subscription
+  trialEndsAt: { type: Date },
+  isSubscribed: { type: Boolean, default: false },
+  activePlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan' },
+  subscriptionStartedAt: { type: Date },
+  subscriptionExpiresAt: { type: Date },
+  planTier: { 
+    type: String, 
+    enum: ['Basic', 'Intermediate', 'Full', 'Premium', 'Platinum', 'None'], 
+    default: 'None' 
   },
 
   // Authentication

@@ -28,7 +28,7 @@ const TopicSchema = new mongoose.Schema({
     url: String,
     publicId: String,
     name: String,
-    type: { type: String, enum: ['file', 'google_doc'], default: 'file' }
+    type: { type: String, enum: ['file', 'google_doc', 'google_ppt'], default: 'file' }
   }],
   order: {
     type: Number,
@@ -41,6 +41,11 @@ const TopicSchema = new mongoose.Schema({
   },
   classDate: {
     type: Date
+  },
+  requiredTier: { 
+    type: String, 
+    enum: ['Basic', 'Intermediate', 'Full'], 
+    default: 'Basic' 
   },
   createdAt: {
     type: Date,

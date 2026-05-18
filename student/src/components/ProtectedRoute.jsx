@@ -17,7 +17,7 @@ const routeAccessMap = {
   '/settings': 'settings'
 };
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, skipTrialCheck = false }) => {
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('studentUser'));
 
@@ -28,6 +28,13 @@ const ProtectedRoute = ({ children }) => {
   if (user.status !== 'Active') {
     localStorage.removeItem('studentUser');
     return <Navigate to="/login" state={{ error: 'Your account is inactive. Please contact support.' }} replace />;
+  }
+
+  // 10-Day Free Trial Logic
+  if (!skipTrialCheck) {
+    if (user.trialEndsAt && new Date() > new Date(user.trialEndsAt) && !user.isSubscribed) {
+      return <Navigate to="/subscription" replace />;
+    }
   }
 
   // Check feature access

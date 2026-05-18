@@ -66,6 +66,7 @@ exports.createMaterial = async (req, res) => {
 
         const material = await StudyMaterial.create({
             ...otherData,
+            requiredTier: otherData.requiredTier || 'Basic',
             fileUrl,
             filePublicId,
             thumbnailUrl,

@@ -7,21 +7,20 @@ import MyCourses from './pages/MyCourses';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Playground from './pages/Playground';
-import MyQR from './pages/MyQR';
-import AttendanceHistory from './pages/AttendanceHistory';
 import TypingPractice from './pages/TypingPractice';
 import TypingTrainer from './pages/TypingTrainer';
-import MockInterviewDashboard from './pages/MockInterviewDashboard';
-import InterviewSchedules from './pages/InterviewSchedules';
 import StudyMaterials from './pages/Materials/StudyMaterials';
+import Leaderboard from './pages/Leaderboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import ResetPassword from './pages/ResetPassword';
 import CoursePlayer from './pages/CoursePlayer';
-import JobPortal from './pages/JobPortal';
 import Payments from './pages/Payments';
 import RewardStore from './pages/RewardStore';
 import NotFound from './pages/NotFound';
+import Register from './pages/Register';
+import Subscription from './pages/Subscription';
+
 
 
 function App() {
@@ -32,23 +31,26 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        
+        {/* Protected route for subscription page (doesn't require trial check) */}
+        <Route path="/subscription" element={
+          <ProtectedRoute skipTrialCheck={true}>
+            <Subscription />
+          </ProtectedRoute>
+        } />
 
-        {/* Protected Routes with Sidebar Layout */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/courses" element={<MyCourses />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/my-qr" element={<MyQR />} />
-          <Route path="/my-attendance" element={<AttendanceHistory />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/typing-practice" element={<TypingPractice />} />
           <Route path="/typing-trainer" element={<TypingTrainer />} />
-          <Route path="/mock-interview" element={<MockInterviewDashboard />} />
-          <Route path="/my-interviews" element={<InterviewSchedules />} />
           <Route path="/materials" element={<StudyMaterials />} />
-          <Route path="/jobs" element={<JobPortal />} />
           <Route path="/payments" element={<Payments />} />
           <Route path="/reward-store" element={<RewardStore />} />
         </Route>

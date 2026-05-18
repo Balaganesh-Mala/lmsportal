@@ -15,17 +15,17 @@ const Progress = require('../models/Progress');
 // @access  Admin
 router.post('/', async (req, res) => {
     try {
-        const { name, courseId, startDate, endDate, maxStudents, description, status } = req.body;
+        const { name, courses, startDate, endDate, maxStudents, description, status } = req.body;
 
-        if (!name || !courseId || !startDate || !endDate) {
-            return res.status(400).json({ message: 'Name, courseId, startDate, and endDate are required' });
+        if (!name || !courses || !startDate || !endDate) {
+            return res.status(400).json({ message: 'Name, courses, startDate, and endDate are required' });
         }
 
-        // Verify the course exists
-        const course = await Course.findById(courseId);
-        if (!course) return res.status(404).json({ message: 'Course not found' });
+        // Verify the courses exist
+        const courseList = await Course.find({ _id: { $in: courses } });
+        if (courseList.length !== courses.length) return res.status(404).json({ message: 'One or more courses not found' });
 
-        const batch = new Batch({ name, courseId, startDate, endDate, maxStudents, description, status });
+        const batch = new Batch({ name, courses, startDate, endDate, maxStudents, description, status });
         await batch.save();
 
         res.status(201).json({ success: true, batch });
@@ -45,11 +45,11 @@ router.get('/', async (req, res) => {
         
         // Prevent CastError if courseId is string "undefined" or null
         if (courseId && courseId !== 'undefined' && courseId !== 'null') {
-            filter.courseId = courseId;
+            filter.courses = courseId;
         }
 
         const batches = await Batch.find(filter)
-            .populate('courseId', 'title')
+            .populate('courses', 'title classLevel')
             .sort({ createdAt: -1 });
 
         // Attach student count to each batch
@@ -72,7 +72,7 @@ router.get('/', async (req, res) => {
 // @access  Admin
 router.get('/:id', async (req, res) => {
     try {
-        const batch = await Batch.findById(req.params.id).populate('courseId', 'title duration');
+        const batch = await Batch.findById(req.params.id).populate('courses', 'title duration classLevel');
         if (!batch) return res.status(404).json({ message: 'Batch not found' });
 
         const studentCount = await BatchStudent.countDocuments({ batchId: batch._id });
@@ -88,13 +88,13 @@ router.get('/:id', async (req, res) => {
 // @access  Admin
 router.put('/:id', async (req, res) => {
     try {
-        const { name, startDate, endDate, maxStudents, description, status } = req.body;
+        const { name, courses, startDate, endDate, maxStudents, description, status } = req.body;
 
         const batch = await Batch.findByIdAndUpdate(
             req.params.id,
-            { name, startDate, endDate, maxStudents, description, status },
+            { name, courses, startDate, endDate, maxStudents, description, status },
             { new: true, runValidators: true }
-        ).populate('courseId', 'title');
+        ).populate('courses', 'title classLevel');
 
         if (!batch) return res.status(404).json({ message: 'Batch not found' });
 
@@ -160,12 +160,11 @@ router.post('/:id/assign', async (req, res) => {
             const student = await Student.findById(sId);
             if (!student) continue;
 
-            // Upsert: if student is already in a batch for this course, update it
+            // Upsert: if student is already in this batch, update it
             const enrollment = await BatchStudent.findOneAndUpdate(
-                { studentId: sId, courseId: batch.courseId },
+                { studentId: sId, batchId },
                 {
                     batchId,
-                    courseId: batch.courseId,
                     enrollmentDate: enrollmentDate || new Date(),
                     status: 'active'
                 },
@@ -238,22 +237,45 @@ router.post('/assign-bonus', async (req, res) => {
 // @access  Admin
 router.put('/student/change-batch', async (req, res) => {
     try {
-        const { studentId, newBatchId } = req.body;
+        const { studentId, studentIds, newBatchId, oldBatchId } = req.body;
 
         const newBatch = await Batch.findById(newBatchId);
         if (!newBatch) return res.status(404).json({ message: 'Target batch not found' });
 
-        const enrollment = await BatchStudent.findOneAndUpdate(
-            { studentId, courseId: newBatch.courseId },
-            { batchId: newBatchId, enrollmentDate: new Date() },
-            { new: true }
-        );
+        const idsToMove = studentIds || (studentId ? [studentId] : []);
+        if (idsToMove.length === 0) return res.status(400).json({ message: 'No students selected' });
 
-        if (!enrollment) {
-            return res.status(404).json({ message: 'Student enrollment not found for this course' });
-        }
+        const results = await Promise.all(idsToMove.map(async (sId) => {
+            // Check if student is already in the new batch
+            const existingInNewBatch = await BatchStudent.findOne({ studentId: sId, batchId: newBatchId });
 
-        res.json({ success: true, enrollment });
+            if (existingInNewBatch) {
+                // If already in new batch, just delete the old batch enrollment
+                if (oldBatchId && oldBatchId !== newBatchId) {
+                    await BatchStudent.findOneAndDelete({ studentId: sId, batchId: oldBatchId });
+                }
+                return existingInNewBatch;
+            } else {
+                // Not in new batch yet. 
+                if (oldBatchId) {
+                    const updated = await BatchStudent.findOneAndUpdate(
+                        { studentId: sId, batchId: oldBatchId },
+                        { batchId: newBatchId, enrollmentDate: new Date() },
+                        { new: true }
+                    );
+                    if (updated) return updated;
+                }
+                
+                // Fallback creation
+                return await BatchStudent.findOneAndUpdate(
+                    { studentId: sId, batchId: newBatchId },
+                    { batchId: newBatchId, enrollmentDate: new Date() },
+                    { new: true, upsert: true }
+                );
+            }
+        }));
+
+        res.json({ success: true, message: `Successfully moved ${results.length} students` });
     } catch (err) {
         console.error('Change Batch Error:', err);
         res.status(500).json({ message: 'Server Error' });
@@ -315,15 +337,27 @@ router.get('/:id/students', async (req, res) => {
 router.get('/student/:studentId/enrollment', async (req, res) => {
     try {
         const enrollments = await BatchStudent.find({ studentId: req.params.studentId })
-            .populate('batchId', 'name startDate endDate status')
-            .populate('courseId');
+            .populate({
+                path: 'batchId',
+                select: 'name startDate endDate status courses',
+                populate: {
+                    path: 'courses'
+                }
+            });
 
         // Fetch direct purchase/unlock records
         const StudentCourse = require('../models/StudentCourse');
         const unlockedCourses = await StudentCourse.find({ studentId: req.params.studentId }).populate('courseId');
 
         // Get IDs of courses that are currently in a batch enrollment for this student
-        const batchCourseIds = new Set(enrollments.map(e => e.courseId?._id?.toString()).filter(Boolean));
+        const batchCourseIds = new Set();
+        enrollments.forEach(e => {
+            if (e.batchId && e.batchId.courses) {
+                e.batchId.courses.forEach(c => {
+                    batchCourseIds.add(c._id ? c._id.toString() : c.toString());
+                });
+            }
+        });
 
         // Create a normalized list from batch enrollments
         const filteredBatchEnrollments = enrollments.filter(e => {

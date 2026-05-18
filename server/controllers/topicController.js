@@ -24,7 +24,7 @@ const uploadToCloudinary = async (filePath, folder, resourceType = 'auto') => {
 // @access  Admin
 exports.createTopic = async (req, res) => {
     try {
-        const { moduleId, title, description, duration, order, classDate } = req.body;
+        const { moduleId, title, description, duration, order, classDate, requiredTier } = req.body;
 
         if (!moduleId || !title || order === undefined) {
             return res.status(400).json({ message: 'Please provide moduleId, title and order' });
@@ -37,6 +37,7 @@ exports.createTopic = async (req, res) => {
             duration,
             order,
             classDate,
+            requiredTier: requiredTier || 'Basic',
             notes: []
         };
 
@@ -68,7 +69,7 @@ exports.createTopic = async (req, res) => {
             }
         }
 
-        // Handle External Notes (Google Docs)
+        // Handle External Notes (Google Docs / PPTs)
         if (req.body.externalNotes) {
             try {
                 const extNotes = typeof req.body.externalNotes === 'string' ? JSON.parse(req.body.externalNotes) : req.body.externalNotes;
@@ -78,7 +79,7 @@ exports.createTopic = async (req, res) => {
                             topicData.notes.push({
                                 url: note.url,
                                 name: note.name,
-                                type: 'google_doc'
+                                type: note.type || 'google_doc'
                             });
                         }
                     });
@@ -119,7 +120,7 @@ exports.updateTopic = async (req, res) => {
         let topic = await Topic.findById(req.params.id);
         if (!topic) return res.status(404).json({ message: 'Topic not found' });
 
-        const { title, description, duration, order, classDate, keepVideo, keepNotes, videoUrl } = req.body;
+        const { title, description, duration, order, classDate, keepVideo, keepNotes, videoUrl, requiredTier } = req.body;
         
         // Update basic fields
         if (title) topic.title = title;
@@ -127,6 +128,7 @@ exports.updateTopic = async (req, res) => {
         if (duration) topic.duration = duration;
         if (order !== undefined) topic.order = order;
         if (classDate) topic.classDate = classDate;
+        if (requiredTier) topic.requiredTier = requiredTier;
 
         // Handle Video Update (URL or File)
         if (videoUrl) {
@@ -170,7 +172,7 @@ exports.updateTopic = async (req, res) => {
                             topic.notes.push({
                                 url: note.url,
                                 name: note.name,
-                                type: 'google_doc'
+                                type: note.type || 'google_doc'
                             });
                         }
                     });

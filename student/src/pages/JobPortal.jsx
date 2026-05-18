@@ -420,15 +420,15 @@ export default function JobPortal() {
                         <h1 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
                             Career Opportunities
                             <Sparkles className="text-amber-400" size={20} />
-                            
+
                             {/* Blinking Security Icon */}
-                            <button 
+                            <button
                                 onClick={() => setShowSecurityNotice(true)}
                                 className="relative flex items-center justify-center ml-1 p-1 hover:bg-rose-50 rounded-full transition-colors group"
                             >
                                 <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-rose-400 opacity-75"></span>
                                 <ShieldAlert size={18} className="text-rose-500 relative z-10" />
-                                
+
                                 {/* Tooltip */}
                                 <span className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
                                     Security Policy
@@ -439,15 +439,15 @@ export default function JobPortal() {
                     </div>
 
                     <div className="flex items-center gap-5">
-                         <div className="text-right hidden sm:block">
+                        <div className="text-right hidden sm:block">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Applications</p>
                             <p className="text-xl font-black text-slate-900 leading-none">{stats.totalApplied}</p>
-                         </div>
-                         <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-                         <div className="text-right hidden sm:block">
+                        </div>
+                        <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+                        <div className="text-right hidden sm:block">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Interviews</p>
                             <p className="text-xl font-black text-indigo-600 leading-none">{stats.interviews}</p>
-                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -455,14 +455,14 @@ export default function JobPortal() {
                 <AnimatePresence>
                     {showSecurityNotice && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                            <motion.div 
+                            <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 onClick={() => setShowSecurityNotice(false)}
                                 className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
                             />
-                            <motion.div 
+                            <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
@@ -472,7 +472,7 @@ export default function JobPortal() {
                                     <div className="flex items-center gap-2 text-rose-600 font-bold text-[10px] uppercase tracking-widest">
                                         <ShieldAlert size={14} /> Security & Privacy Policy
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => setShowSecurityNotice(false)}
                                         className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
                                     >
@@ -493,7 +493,7 @@ export default function JobPortal() {
                                     </div>
                                 </div>
                                 <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
-                                    <button 
+                                    <button
                                         onClick={() => setShowSecurityNotice(false)}
                                         className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest"
                                     >
@@ -519,7 +519,7 @@ export default function JobPortal() {
                         {/* Decorative glow */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none" />
                         <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-[60px] -ml-8 -mb-8 pointer-events-none" />
-                        
+
                         {/* Subtle Grid Pattern */}
                         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
 

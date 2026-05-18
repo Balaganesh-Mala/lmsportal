@@ -605,3 +605,335 @@ exports.generateTrainerReportPDF = (studentsData, res) => {
     }
   });
 };
+
+exports.generateReceiptPDF = (data, res) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const { installment, payment, settings, feeSummary, batchName } = data;
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 45,
+        bufferPages: true,
+      });
+
+      const receiptId = `REC-${installment._id.toString().slice(-6).toUpperCase()}`;
+      const fileName = `Receipt_${receiptId}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${fileName}"`
+      );
+
+      doc.pipe(res);
+
+      // Colors
+      const primary = "#1e3a8a"; // dark-blue (school style)
+      const secondary = "#10b981"; // emerald-500
+      const dark = "#0f172a";
+      const text = "#334155";
+      const gray = "#64748b";
+      const border = "#e2e8f0";
+
+      const pageWidth = doc.page.width;
+      const contentWidth = pageWidth - 90;
+
+      // Draw Top decorative bar
+      doc.rect(45, 30, contentWidth, 5).fill(primary);
+
+      // Logo or School Title
+      const title = settings?.siteTitle || 'LMS ACADEMY';
+      doc
+        .fillColor(primary)
+        .font("Helvetica-Bold")
+        .fontSize(20)
+        .text(title.toUpperCase(), 45, 55);
+
+      const subtitle = "ACADEMIC EXCELLENCE & STUDENT GROWTH";
+      doc
+        .fillColor(gray)
+        .font("Helvetica-Bold")
+        .fontSize(7)
+        .text(subtitle, 45, 80, { characterSpacing: 1.5 });
+
+      // Receipt details (Right side)
+      doc
+        .fillColor(dark)
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text(`RECEIPT #: ${receiptId}`, 380, 55, { align: "right", width: 170 });
+
+      const displayDate = payment?.paid_at || installment.paid_date || new Date();
+      const formattedDate = new Date(displayDate).toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      doc
+        .fillColor(gray)
+        .font("Helvetica")
+        .fontSize(8)
+        .text(`DATE: ${formattedDate}`, 380, 70, { align: "right", width: 170 });
+
+      doc.moveTo(45, 100).lineTo(pageWidth - 45, 100).lineWidth(0.5).stroke(border);
+
+      // Watermark
+      const watermarkText = title.toUpperCase();
+
+      // Info Grid (Card boxes)
+      const gridY = 115;
+      const cardWidth = 242;
+      const cardHeight = 82;
+
+      // Draw elegant rounded card boxes with a light gray border and soft slate tint
+      doc.save();
+      // Left Card
+      doc
+        .roundedRect(45, gridY, cardWidth, cardHeight, 6)
+        .fillAndStroke("#f8fafc", "#f1f5f9");
+      // Right Card
+      doc
+        .roundedRect(302, gridY, cardWidth, cardHeight, 6)
+        .fillAndStroke("#f8fafc", "#f1f5f9");
+      doc.restore();
+
+      // Left side: Student Info text inside card
+      doc
+        .fillColor(gray)
+        .font("Helvetica-Bold")
+        .fontSize(7.5)
+        .text("STUDENT DETAILS", 57, gridY + 10);
+
+      doc
+        .fillColor(dark)
+        .font("Helvetica-Bold")
+        .fontSize(11)
+        .text(installment.student_id?.name || "N/A", 57, gridY + 22, { width: cardWidth - 24 });
+
+      doc
+        .fillColor(text)
+        .font("Helvetica")
+        .fontSize(8)
+        .text(`Email: ${installment.student_id?.email || "N/A"}`, 57, gridY + 37, { width: cardWidth - 24 })
+        .text(`Phone: ${installment.student_id?.phone || "N/A"}`, 57, gridY + 47, { width: cardWidth - 24 });
+
+      if (batchName) {
+        doc
+          .fillColor(primary)
+          .font("Helvetica-Bold")
+          .fontSize(8.5)
+          .text(`Class/Grade: ${batchName}`, 57, gridY + 61, { width: cardWidth - 24 });
+      }
+
+      // Right side: Payment Details text inside card
+      doc
+        .fillColor(gray)
+        .font("Helvetica-Bold")
+        .fontSize(7.5)
+        .text("PAYMENT INFORMATION", 314, gridY + 10);
+
+      doc
+        .fillColor(text)
+        .font("Helvetica")
+        .fontSize(8)
+        .text(`Method: ${payment?.payment_mode || "Online"}`, 314, gridY + 25, { width: cardWidth - 24 })
+        .text(`Status: Paid & Verified`, 314, gridY + 37, { width: cardWidth - 24 })
+        .text(`Reference ID: ${payment?.reference_id || "N/A"}`, 314, gridY + 49, { width: cardWidth - 24 });
+
+      doc.moveTo(45, 210).lineTo(pageWidth - 45, 210).lineWidth(0.5).stroke(border);
+
+      // Table Particulars of Settlement
+      let tableY = 222;
+      doc
+        .rect(45, tableY, contentWidth, 25)
+        .fillAndStroke("#eef2ff", border);
+
+      doc
+        .fillColor(dark)
+        .font("Helvetica-Bold")
+        .fontSize(8)
+        .text("PARTICULARS OF TUITION & SYLLABUS SETTLEMENT", 55, tableY + 9)
+        .text("AMOUNT (INR)", 450, tableY + 9, { align: "right", width: 90 });
+
+      // Table row
+      const isSub = installment.installment_no === 99;
+      const particularsTitle = isSub 
+        ? "Smart Learning Premium Plan Subscription" 
+        : `Tuition Fee Installment #${installment.installment_no}`;
+      const programLabel = isSub 
+        ? "All Grade Subjects & Learning Portal Access" 
+        : `Grade Syllabus Course Program`;
+
+      const rowY = tableY + 25;
+      doc
+        .rect(45, rowY, contentWidth, 70)
+        .stroke(border);
+
+      // Draw subtle vertical grid line separating details from the amount
+      doc
+        .moveTo(440, rowY)
+        .lineTo(440, rowY + 70)
+        .lineWidth(0.5)
+        .stroke(border);
+
+      doc
+        .fillColor(dark)
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text(particularsTitle, 55, rowY + 15);
+
+      doc
+        .fillColor(primary)
+        .font("Helvetica-Bold")
+        .fontSize(8)
+        .text(programLabel, 55, rowY + 30);
+
+      const italicText = isSub
+        ? "Access enabled for interactive digital worksheets, quizzes, progress reports and parent updates."
+        : "Standard fee installment paid towards the assigned class grade and associated subjects.";
+
+      doc
+        .fillColor(gray)
+        .font("Helvetica-Oblique")
+        .fontSize(8)
+        .text(italicText, 55, rowY + 45, { width: 350 });
+
+      doc
+        .fillColor(dark)
+        .font("Helvetica-Bold")
+        .fontSize(12)
+        .text(`INR ${installment.amount.toLocaleString('en-IN')}`, 450, rowY + 25, { align: "right", width: 90 });
+
+      // Total Row
+      const totalY = rowY + 70;
+      doc
+        .rect(345, totalY, 205, 30)
+        .fillAndStroke(primary, primary);
+
+      doc
+        .fillColor("#ffffff")
+        .font("Helvetica-Bold")
+        .fontSize(12)
+        .text(`INR ${installment.amount.toLocaleString('en-IN')}`, 450, totalY + 10, { align: "right", width: 90 });
+
+      doc
+        .fillColor("#ffffff")
+        .font("Helvetica-Bold")
+        .fontSize(7)
+        .text("TOTAL AMOUNT PAID", 355, totalY + 11);
+
+      // Fee Breakdown Summary
+      let breakdownY = totalY + 45;
+      if (feeSummary && !isSub) {
+        doc
+          .fillColor(gray)
+          .font("Helvetica-Bold")
+          .fontSize(8)
+          .text("ACADEMIC LEDGER SUMMARY", 45, breakdownY);
+
+        doc
+          .fillColor(text)
+          .font("Helvetica")
+          .fontSize(8)
+          .text(`Total Course Fee: INR ${feeSummary.total.toLocaleString('en-IN')}`, 45, breakdownY + 15);
+
+        if (feeSummary.previousPaid > 0) {
+          doc.text(`Previously Settled: INR ${feeSummary.previousPaid.toLocaleString('en-IN')}`, 45, breakdownY + 27);
+        }
+
+        doc.text(`This Installment Payment: INR ${installment.amount.toLocaleString('en-IN')}`, 45, breakdownY + 39);
+
+        doc
+          .fillColor("#dc2626")
+          .font("Helvetica-Bold")
+          .text(`Remaining Balance: INR ${feeSummary.pending.toLocaleString('en-IN')}`, 45, breakdownY + 51);
+      }
+
+      // Terms & Conditions (Left side) and Signatory (Right side)
+      const sigY = breakdownY + 15;
+      doc
+        .fillColor(dark)
+        .font("Helvetica-Bold")
+        .fontSize(7.5)
+        .text("TERMS & CONDITIONS", 45, sigY);
+
+      const terms = [
+        "1. All tuition and subscription fee payments are strictly non-refundable.",
+        "2. Service access is subject to timely payment of academic installments.",
+        "3. This is a secure digital record and does not require a physical signature.",
+        "4. For support or billing disputes, contact school support via email."
+      ];
+
+      let termY = sigY + 12;
+      terms.forEach(term => {
+        doc
+          .fillColor(gray)
+          .font("Helvetica")
+          .fontSize(6.5)
+          .text(term, 45, termY, { width: 300 });
+        termY += 9;
+      });
+
+      // Authorized Signatory
+      const sigX = 380;
+      doc.moveTo(sigX, sigY + 35).lineTo(pageWidth - 45, sigY + 35).lineWidth(0.5).stroke(border);
+      
+      doc
+        .fillColor(dark)
+        .font("Helvetica-Bold")
+        .fontSize(8)
+        .text("AUTHORIZED OFFICIAL", sigX, sigY + 42, { align: "center", width: 170 })
+        .fillColor(gray)
+        .font("Helvetica")
+        .fontSize(7)
+        .text("Seal & Signature Verified", sigX, sigY + 50, { align: "center", width: 170 });
+
+      // Footer
+      const companyAddress = settings?.contact?.address || "Digital School Portal Address";
+      const companyPhone = settings?.contact?.phone || "";
+      const companyEmail = settings?.contact?.email || "";
+      
+      const footerLines = [
+        `* Verified Digital Record of ${title.toUpperCase()}.`,
+        `* Support & Queries: ${companyEmail} | Phone: ${companyPhone}`,
+        `* Office Address: ${companyAddress}`
+      ];
+
+      // Draw watermark and footer on all pages
+      const rangeAfter = doc.bufferedPageRange();
+      for (let i = 0; i < rangeAfter.count; i++) {
+        doc.switchToPage(i);
+
+        // Watermark in background
+        doc.save();
+        doc.opacity(0.015);
+        doc.fillColor("#000000");
+        doc.font("Helvetica-Bold");
+        doc.fontSize(45);
+        doc.translate(pageWidth / 2, doc.page.height / 2);
+        doc.rotate(-30);
+        doc.text(watermarkText, -250, 0, { width: 500, align: "center" });
+        doc.restore();
+
+        // Footer lines
+        doc
+          .fillColor(gray)
+          .font("Helvetica")
+          .fontSize(7)
+          .text(footerLines.join("   *   "), 45, doc.page.height - 35, {
+            width: contentWidth,
+            align: "center",
+            lineBreak: false
+          });
+      }
+
+      doc.on("end", resolve);
+      doc.on("error", reject);
+      doc.end();
+
+    } catch (error) {
+      reject(error);
+    }
+  });
+};

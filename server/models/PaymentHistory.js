@@ -12,7 +12,7 @@ const PaymentHistorySchema = new mongoose.Schema({
   },
   payment_mode: {
     type: String,
-    enum: ['UPI', 'Cash', 'Bank Transfer', 'Card', 'Other'],
+    enum: ['UPI', 'Cash', 'Bank Transfer', 'Card', 'Razorpay', 'Other'],
     required: true,
   },
   reference_id: {

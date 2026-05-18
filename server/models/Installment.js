@@ -9,7 +9,7 @@ const InstallmentSchema = new mongoose.Schema({
   fee_structure_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'FeeStructure',
-    required: true,
+    required: false,
   },
   installment_no: {
     type: Number,
@@ -34,7 +34,7 @@ const InstallmentSchema = new mongoose.Schema({
   },
   payment_mode: {
     type: String,
-    enum: ['UPI', 'Cash', 'Bank Transfer', 'Card', 'Other', null],
+    enum: ['UPI', 'Cash', 'Bank Transfer', 'Card', 'Razorpay', 'Other', null],
     default: null,
   }
 }, { timestamps: true });

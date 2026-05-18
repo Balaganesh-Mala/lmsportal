@@ -11,11 +11,7 @@ const BatchStudentSchema = new mongoose.Schema({
         ref: 'Student',
         required: true
     },
-    courseId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Course',
-        required: true
-    },
+
     enrollmentDate: {
         type: Date,
         default: Date.now
@@ -31,7 +27,7 @@ const BatchStudentSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// A student can only be in one batch per course
-BatchStudentSchema.index({ studentId: 1, courseId: 1 }, { unique: true });
+// A student can only be in a batch once
+BatchStudentSchema.index({ studentId: 1, batchId: 1 }, { unique: true });
 
 module.exports = mongoose.model('BatchStudent', BatchStudentSchema);

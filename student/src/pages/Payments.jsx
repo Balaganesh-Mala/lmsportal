@@ -105,7 +105,13 @@ export default function Payments() {
                             installments.map((item) => (
                                 <tr key={item._id} className="hover:bg-slate-50/50 transition-all">
                                     <td className="px-6 py-6 whitespace-nowrap">
-                                        <span className="text-sm font-medium text-slate-500">#{item.installment_no}</span>
+                                        <span className="text-sm font-medium text-slate-500">
+                                            {item.installment_no === 99 ? (
+                                                <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter">Subscription</span>
+                                            ) : (
+                                                `#${item.installment_no}`
+                                            )}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-6 whitespace-nowrap">
                                         <p className="text-sm text-slate-900 font-medium">

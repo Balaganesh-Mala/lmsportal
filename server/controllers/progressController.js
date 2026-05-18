@@ -3,13 +3,14 @@ const Course = require('../models/Course');
 const Module = require('../models/Module');
 const Topic = require('../models/Topic');
 const Student = require('../models/Student');
+const TopicContent = require('../models/TopicContent');
 
 // @desc    Update progress for a topic
 // @route   POST /api/student/progress/update
 // @access  Student
 exports.updateProgress = async (req, res) => {
     try {
-        const { studentId, courseId, topicId, completed, watchedDuration } = req.body;
+        const { studentId, courseId, topicId, completed, watchedDuration, videoCompleted, quizCompleted, assignmentCompleted } = req.body;
 
         if (!studentId || !topicId || !courseId) {
             return res.status(400).json({ message: 'Missing required fields' });
@@ -23,8 +24,11 @@ exports.updateProgress = async (req, res) => {
             if (completed && (!progress.completedAt || !progress.pointsAwarded)) {
                 shouldAwardPoints = true;
             }
-            if (courseId) progress.courseId = courseId; // Fix for orphaned progress records
+            if (courseId) progress.courseId = courseId;
             if (completed !== undefined) progress.completed = completed;
+            if (videoCompleted !== undefined) progress.videoCompleted = videoCompleted;
+            if (quizCompleted !== undefined) progress.quizCompleted = quizCompleted;
+            if (assignmentCompleted !== undefined) progress.assignmentCompleted = assignmentCompleted;
             if (watchedDuration !== undefined) progress.watchedDuration = watchedDuration;
             if (completed && !progress.completedAt) progress.completedAt = Date.now();
         } else {
@@ -36,6 +40,9 @@ exports.updateProgress = async (req, res) => {
                 courseId,
                 topicId,
                 completed: completed || false,
+                videoCompleted: videoCompleted || false,
+                quizCompleted: quizCompleted || false,
+                assignmentCompleted: assignmentCompleted || false,
                 watchedDuration: watchedDuration || 0,
                 completedAt: completed ? Date.now() : undefined
             });
@@ -44,7 +51,6 @@ exports.updateProgress = async (req, res) => {
         if (shouldAwardPoints) {
             try {
                 await Student.findByIdAndUpdate(studentId, { $inc: { points: 100 } });
-                console.log(`Awarded 100 points to Student ${studentId} for completing Topic ${topicId}`);
                 if (progress) {
                     progress.pointsAwarded = true; 
                 }
@@ -55,34 +61,46 @@ exports.updateProgress = async (req, res) => {
 
         await progress.save();
 
-        // --- NEW: Calculate & Update Overall Course Progress Percentage for Student ---
+        // --- Calculate & Update Overall Course Progress Percentage for Student ---
         try {
-            // 1. Get Total Topics in Course
+            // 1. Get all modules and topics for the course
             const modules = await Module.find({ courseId });
             const moduleIds = modules.map(m => m._id);
-            const totalTopics = await Topic.countDocuments({ moduleId: { $in: moduleIds } });
+            const allTopics = await Topic.find({ moduleId: { $in: moduleIds } });
+            const allTopicIds = allTopics.map(t => t._id);
 
-            // 2. Get Completed Topics for Student in this Course
-            const completedCount = await Progress.countDocuments({ 
-                studentId, 
-                courseId, 
-                completed: true 
+            // 2. Determine total activities (Video + Quiz + Assignment)
+            // Each topic has a video tab. Some have quizzes and assignments.
+            let totalActivities = allTopicIds.length; // Total Video Tabs
+            
+            const contents = await TopicContent.find({ topicId: { $in: allTopicIds } });
+            contents.forEach(c => {
+                if (c.mcqTest?.enabled) totalActivities++;
+                if (c.assignments?.length > 0) totalActivities++;
             });
 
-            // 3. Calculate Percentage
+            // 3. Get completed activities for this student
+            const studentProgress = await Progress.find({ studentId, courseId });
+            let completedActivities = 0;
+            studentProgress.forEach(p => {
+                if (p.videoCompleted || p.completed) completedActivities++; // Legacy 'completed' counts as video
+                if (p.quizCompleted) completedActivities++;
+                if (p.assignmentCompleted) completedActivities++;
+            });
+
+            // 4. Calculate Percentage
             let percentage = 0;
-            if (totalTopics > 0) {
-                percentage = Math.round((completedCount / totalTopics) * 100);
+            if (totalActivities > 0) {
+                percentage = Math.round((completedActivities / totalActivities) * 100);
             }
             percentage = Math.min(percentage, 100);
 
-            // 4. Update Student Record
+            // 5. Update Student Record
             await Student.findByIdAndUpdate(studentId, { progress: percentage });
-            console.log(`Updated Student ${studentId} progress to ${percentage}%`);
+            console.log(`Updated Student ${studentId} overall progress to ${percentage}% (${completedActivities}/${totalActivities})`);
 
         } catch (calcErr) {
             console.error("Error updating student overall progress:", calcErr);
-            // Don't fail the request, just log error
         }
         // --------------------------------------------------------------------------
 

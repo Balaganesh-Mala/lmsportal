@@ -9,7 +9,8 @@ const {
   getPaymentDetails,
   deleteInstallment,
   editInstallment,
-  createStandaloneInstallment
+  createStandaloneInstallment,
+  getReceiptPDF
 } = require('../controllers/financeController');
 // const { protect, admin } = require('../middleware/authMiddleware'); // Uncomment and use as per your setup
 
@@ -35,6 +36,9 @@ router.route('/installments/:id/pay')
 
 router.route('/installments/:id/payment')
   .get(getPaymentDetails);
+
+router.route('/installments/:id/receipt-pdf')
+  .get(getReceiptPDF);
 
 router.route('/installments/:id/remind')
   .post(sendManualReminder);

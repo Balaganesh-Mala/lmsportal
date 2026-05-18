@@ -5,6 +5,10 @@ const CourseSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Please add a course title']
     },
+    classLevel: {
+        type: String,
+        default: ''
+    },
     overview: {
         type: String,
         required: [true, 'Please add a course overview']

@@ -1,564 +1,13 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Award, Clock, TrendingUp, Calendar, CheckCircle, UserCheck, Trophy, Medal, Crown, Share2, Linkedin, MessageCircle, Star, X, Copy, Download, Check, Sparkles, Zap, Flame, Loader2, ArrowLeft, Target } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BookOpen, Award, CheckCircle, Trophy, Flame, Target, Crown, Coins, Settings, LogOut } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import toast from 'react-hot-toast';
-import html2canvas from 'html2canvas';
-
-const Confetti = () => {
-    const particles = Array.from({ length: 80 });
-    const colors = ['#f43f5e', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#ffffff', '#fbbf24'];
-
-    return (
-        <div className="fixed inset-0 pointer-events-none z-[10] overflow-hidden">
-            {particles.map((_, i) => {
-                const angle = (Math.random() * 360) * (Math.PI / 180);
-                const velocity = 300 + Math.random() * 600;
-                const xDist = Math.cos(angle) * velocity;
-                const yDist = Math.sin(angle) * velocity;
-
-                return (
-                    <motion.div
-                        key={i}
-                        initial={{
-                            x: "50vw",
-                            y: "50vh",
-                            scale: 0,
-                            rotate: 0,
-                            opacity: 1
-                        }}
-                        animate={{
-                            x: `calc(50vw + ${xDist}px)`,
-                            y: `calc(50vh + ${yDist}px)`,
-                            scale: [0, 1, 0.8, 0],
-                            rotate: Math.random() * 720,
-                            opacity: [0, 1, 1, 0]
-                        }}
-                        transition={{
-                            duration: 3 + Math.random() * 2,
-                            ease: [0.1, 0.5, 0.3, 1], // Decelerating burst
-                            delay: Math.random() * 0.2
-                        }}
-                        className="absolute w-1.5 h-3 rounded-[1px]"
-                        style={{
-                            backgroundColor: colors[Math.floor(Math.random() * colors.length)],
-                            boxShadow: '0 0 10px rgba(255, 255, 255, 0.3)'
-                        }}
-                    />
-                );
-            })}
-        </div>
-    );
-};
-
-const RankCardModal = ({ rank, points, user, stats, activitySummary, weeklyActivity, settings, onClose }) => {
-    const exportRef = useRef(null); // Ref for the hidden export card
-    const [isSharing, setIsSharing] = useState(false);
-    const siteTitle = settings?.siteTitle || "Finwise";
-    const logoUrl = settings?.logoUrl;
-
-    const shareText = `I just achieved Rank #${rank} on the ${siteTitle} Leaderboard! 🏆\nI earned ${points} points this week. 🚀\nCheck my progress! \n#Learning #Achievement #JobReady`;
-
-    // Calculate daily consistency
-    const safeWeeklyActivity = Array.isArray(weeklyActivity) ? weeklyActivity : [];
-    const activeDays = safeWeeklyActivity.filter(d => d.hours > 0).length;
-
-    // Smart Share Function targeting the Hidden Export Card
-    const handleSmartShare = async (platform) => {
-        if (!exportRef.current) return;
-        setIsSharing(true);
-        const toastId = toast.loading("Creating High-Quality Image...");
-
-        try {
-            // Wait for images and layouts to settle
-            await new Promise(resolve => setTimeout(resolve, 800));
-
-            const canvas = await html2canvas(exportRef.current, {
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: null,
-                scale: 2,
-                logging: false,
-                imageTimeout: 15000,
-                onclone: (clonedDoc) => {
-                    const exportNode = clonedDoc.getElementById('export-card-content');
-                    if (exportNode) {
-                        exportNode.style.display = 'flex';
-                        exportNode.style.opacity = '1';
-                    }
-                }
-            });
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
-            if (!blob) throw new Error("Canvas to Blob failed");
-
-            const file = new File([blob], `Finwise-Rank-${rank}.png`, { type: 'image/png' });
-
-            // Force Download if requested or if sharing is unavailable
-            const forceDownload = platform === 'download';
-
-            // Mobile Native Share (Only if not force download)
-            if (!forceDownload && navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    title: 'My Rank Card',
-                    text: shareText,
-                    files: [file]
-                });
-                toast.success("Shared successfully!", { id: toastId });
-            }
-            // Desktop Fallback / Force Download
-            else {
-                const link = document.createElement('a');
-                link.href = canvas.toDataURL('image/png', 1.0);
-                link.download = `Finwise-Rank-${rank}.png`;
-                link.click();
-
-                // Open Platform if requested (and not just download)
-                if (platform !== 'download') {
-                    setTimeout(() => {
-                        if (platform === 'whatsapp') {
-                            window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
-                        } else if (platform === 'linkedin') {
-                            window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`, '_blank');
-                        }
-                    }, 1000);
-                }
-
-                toast.success(forceDownload ? "Card Downloaded!" : "Image Downloaded!", { id: toastId });
-            }
-        } catch (err) {
-            console.error("Sharing failed:", err);
-            toast.error("Process failed. Please try again.", { id: toastId });
-        } finally {
-            setIsSharing(false);
-            setTimeout(() => toast.dismiss(toastId), 3000);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in zoom-in duration-300">
-            <Confetti />
-
-            {/* --- HIDDEN EXPORT CARD (Optimized for HTML2Canvas) --- */}
-            {/* Using opacity-0 and pointer-events-none but keeping it in the layout flow for reliable capture */}
-            <div className="fixed inset-0 opacity-0 pointer-events-none flex items-center justify-center -z-50 overflow-hidden">
-                <div
-                    ref={exportRef}
-                    id="export-card-content"
-                    className="w-[1080px] h-[1350px] bg-gradient-to-br from-[#1a237e] via-[#523B8C] to-[#1a237e] flex flex-col items-center p-[60px] relative overflow-hidden shrink-0"
-                >
-                    {/* Subtle Grid Pattern */}
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff15_1px,transparent_1px),linear-gradient(to_bottom,#ffffff15_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-
-                    {/* Cinematic Blobs */}
-                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#A294F9]/20 rounded-full blur-[200px] -mr-[300px] -mt-[300px] pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-[150px] -ml-[150px] -mb-[150px] pointer-events-none" />
-
-                    {/* Branding Header */}
-                    <div className="w-full flex items-center justify-between mb-[72px] z-20 pt-[20px]">
-                        <div className="flex items-center gap-8">
-                            <h2 className="text-white font-black text-3xl tracking-[0.4em] uppercase opacity-60">Finwise</h2>
-                            <div className="h-10 w-[3px] bg-white/20"></div>
-                            <h2 className="text-white font-black text-3xl tracking-[0.4em] uppercase opacity-90">Career Solutions</h2>
-                        </div>
-                        <div className="flex items-center gap-4 text-white/40 text-lg font-bold uppercase tracking-widest">
-                            Official Rank Card • Student Portal
-                        </div>
-                    </div>
-
-                    {/* Profile Section */}
-                    <div className="w-full flex items-center gap-14 bg-white/5 backdrop-blur-3xl p-14 rounded-[5rem] border border-white/10 shadow-3xl mb-[48px] min-h-[280px]">
-                        <div className="relative shrink-0">
-                            <div className="h-44 w-44 rounded-full border-[8px] border-yellow-400 p-2 overflow-hidden bg-slate-800 shadow-2xl">
-                                {user?.profilePicture ? (
-                                    <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-white text-6xl font-bold bg-indigo-600">
-                                        {user?.name?.charAt(0)}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                            <h3 className="text-white font-bold text-8xl tracking-[0.02em] mb-10 leading-[1.2]">{user?.name}</h3>
-                            <div className="bg-white/10 px-10 py-5 rounded-full inline-flex items-center gap-5 shadow-inner border border-white/5 self-start">
-                                <div className="p-2.5 bg-purple-500 rounded-full shadow-md">
-                                    <Star size={24} className="text-white fill-white" />
-                                </div>
-                                <span className="text-white text-3xl font-black tracking-tight uppercase">{(stats?.points || 0).toLocaleString()} Total Points</span>
-                            </div>
-                        </div>
-                        <div className="shrink-0 flex items-center justify-center p-4">
-                            <div className="p-8 bg-yellow-500/10 rounded-[3rem] border-4 border-yellow-500/20">
-                                <Crown size={120} className="text-yellow-400 drop-shadow-2xl fill-yellow-400/10" strokeWidth={1.5} />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Hero Card: Daily Goal */}
-                    <div className="w-full bg-white rounded-[5rem] p-16 shadow-4xl relative overflow-hidden flex flex-col items-center border border-indigo-50 mb-[48px] min-h-[500px]">
-                        <div className="w-full grid grid-cols-[260px_1fr_260px] items-center gap-10 mb-16">
-                            {/* Target Illustration */}
-                            <div className="relative h-64 w-64 justify-self-start">
-                                <div className="absolute inset-0 bg-red-50 rounded-full scale-110"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-44 h-44 bg-red-100 rounded-full flex items-center justify-center shadow-inner">
-                                        <div className="w-32 h-32 bg-red-500 rounded-full flex items-center justify-center border-[8px] border-white shadow-xl">
-                                            <div className="w-12 h-12 bg-red-900 rounded-full"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="absolute top-0 right-0 text-yellow-500">
-                                    <Sparkles size={48} fill="currentColor" />
-                                </div>
-                            </div>
-
-                            {/* Achievement Text (Centered) */}
-                            <div className="flex flex-col items-center justify-center text-center px-4 pt-4">
-                                <h1 className="text-[#1a237e] text-6xl font-black mb-14 uppercase tracking-[0.3em] leading-tight">Daily Goal</h1>
-                                {(stats?.dailyPoints || 0) >= (stats?.dailyGoal || 100) ? (
-                                    <div className="bg-purple-600 text-white px-16 py-8 rounded-[2.5rem] font-black text-4xl shadow-[0_24px_50px_rgba(147,51,234,0.4)] uppercase tracking-widest whitespace-nowrap">
-                                        Achieved
-                                    </div>
-                                ) : (
-                                    <div className="bg-slate-100 text-slate-400 px-16 py-8 rounded-[2.5rem] font-black text-2xl uppercase tracking-[0.3em] whitespace-nowrap">
-                                        In Progress
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Points Circle */}
-                            <div className="relative h-60 w-60 justify-self-end">
-                                <svg className="w-full h-full -rotate-90">
-                                    <circle cx="120" cy="120" r="100" stroke="#f3e5f5" strokeWidth="18" fill="transparent" />
-                                    <circle
-                                        cx="120" cy="120" r="100" stroke="#7e57c2" strokeWidth="18" fill="transparent"
-                                        strokeDasharray="628"
-                                        strokeDashoffset={628 - (628 * Math.min(1, (stats?.dailyPoints || 0) / (stats?.dailyGoal || 100)))}
-                                        strokeLinecap="round"
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <Star size={44} className="text-purple-600 mb-2 fill-purple-600" />
-                                    <span className="text-[#1a237e] text-3xl font-black leading-none">
-                                        {(stats?.dailyPoints || 0)}/{(stats?.dailyGoal || 100)}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Daily Stats Grid */}
-                        <div className="w-full grid grid-cols-2 gap-10 border-t border-slate-100 pt-12">
-                            <div className="flex items-center gap-8 justify-center bg-slate-50/50 py-10 rounded-[3rem]">
-                                <div className="p-6 bg-indigo-100 text-indigo-600 rounded-3xl shadow-sm">
-                                    <Trophy size={48} strokeWidth={2.5} />
-                                </div>
-                                <div>
-                                    <p className="text-[#1a237e] font-black text-6xl leading-none mb-2">#{rank}</p>
-                                    <p className="text-slate-400 text-xl font-black uppercase tracking-widest leading-none">Daily Rank</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-8 justify-center bg-slate-50/50 py-10 rounded-[3rem]">
-                                <div className="p-6 bg-yellow-100 text-yellow-600 rounded-3xl shadow-sm">
-                                    <Zap size={48} fill="currentColor" strokeWidth={2.5} />
-                                </div>
-                                <div>
-                                    <p className="text-[#1a237e] font-black text-6xl leading-none mb-2">{stats?.points || 0}</p>
-                                    <p className="text-slate-400 text-xl font-black uppercase tracking-widest leading-none">Total Points</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Sub-Cards Row */}
-                    <div className="w-full grid grid-cols-2 gap-10 flex-1">
-                        <div className="bg-white rounded-[4rem] p-12 shadow-4xl flex flex-col h-full border border-slate-50">
-                            <div className="flex items-center justify-between mb-10">
-                                <h4 className="text-[#1a237e] font-black text-2xl uppercase tracking-widest">Course Progress</h4>
-                                <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl shadow-sm">
-                                    <BookOpen size={24} strokeWidth={3} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8 mb-10 items-center">
-                                <div>
-                                    <p className="text-6xl font-black text-[#1a237e] leading-none mb-3">{stats?.batchProgress || 0}%</p>
-                                    <p className="text-slate-400 text-xl font-black uppercase tracking-widest leading-none">Overall Progress</p>
-                                </div>
-                                <div>
-                                    <p className="text-6xl font-black text-[#1a237e] leading-none mb-3">{stats?.enrolledCourses || 0}</p>
-                                    <p className="text-slate-400 text-xl font-black uppercase tracking-widest leading-none">Enrolled</p>
-                                </div>
-                            </div>
-                            <div className="mt-auto">
-                                <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                    <div className="h-full bg-emerald-500 rounded-full shadow-md" style={{ width: `${stats?.batchProgress || 0}%` }} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-[4rem] p-12 shadow-4xl flex flex-col h-full border border-slate-50">
-                            <div className="flex items-center justify-between mb-10">
-                                <h4 className="text-[#1a237e] font-black text-2xl uppercase tracking-widest">Weekly Goal</h4>
-                                <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl shadow-sm">
-                                    <Clock size={24} strokeWidth={3} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8 mb-10 items-center">
-                                <div>
-                                    <p className="text-6xl font-black text-[#1a237e] leading-none mb-3">{activeDays}/7</p>
-                                    <p className="text-slate-400 text-xl font-black uppercase tracking-widest leading-none">Active Days</p>
-                                </div>
-                                <div>
-                                    <p className="text-6xl font-black text-[#1a237e] leading-none mb-3">{activitySummary?.topicCount || 0}</p>
-                                    <p className="text-slate-400 text-xl font-black uppercase tracking-widest leading-none">Topics</p>
-                                </div>
-                            </div>
-                            <div className="mt-auto">
-                                <div className="flex gap-4 justify-between px-2">
-                                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
-                                        const isActive = safeWeeklyActivity[idx] && safeWeeklyActivity[idx].hours > 0;
-                                        return (
-                                            <div key={idx} className="flex flex-col items-center gap-4">
-                                                <div className={`h-6 w-6 rounded-full shadow-md transition-all duration-300 ${isActive ? 'bg-indigo-500 scale-125' : 'bg-slate-200'}`} />
-                                                <span className="text-xl font-black text-slate-400">{day}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Footer Branding */}
-                    <div className="w-full mt-10 pt-10 border-t border-white/10 flex justify-between items-center text-white/40 font-bold uppercase tracking-[0.3em] text-lg">
-                        <span>Keep Learning, Keep Growing</span>
-                        <span>finwise.tech</span>
-                    </div>
-
-                </div>
-            </div>
-
-
-            {/* --- VISIBLE UI (Interactive Card) --- */}
-            {/* Glow Effect behind the card */}
-            <div className="absolute w-full max-w-md h-[500px] bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none"></div>
-
-            <div className="w-full max-w-md h-[650px] bg-gradient-to-br from-[#1a237e] via-[#523B8C] to-[#1a237e] rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden relative border border-white/20 ring-1 ring-white/10 flex flex-col">
-                {/* Subtle Grid Pattern from Blogs Header */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff15_1px,transparent_1px),linear-gradient(to_bottom,#ffffff15_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-
-                {/* Cinematic Blobs */}
-                <div className="absolute top-0 right-0 w-80 h-80 bg-[#A294F9]/20 rounded-full blur-[100px] -mr-40 -mt-40 pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/10 rounded-full blur-[80px] -ml-20 -mb-20 pointer-events-none" />
-
-                {/* Header Pattern overlay */}
-                <div className="absolute top-0 w-full h-24 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none"></div>
-
-                {/* Top Navigation */}
-                <div className="absolute top-0 w-full p-4 flex justify-between items-center z-40 bg-white/5 backdrop-blur-md border-b border-white/5">
-                    <button onClick={onClose} className="text-white hover:bg-white/10 p-2 rounded-full transition-colors">
-                        <ArrowLeft size={18} />
-                    </button>
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-white font-black text-[10px] tracking-[0.3em] uppercase opacity-60">Finwise</h2>
-                        <div className="h-3 w-px bg-white/20"></div>
-                        <h2 className="text-white font-black text-[10px] tracking-[0.3em] uppercase opacity-90">Career Solutions</h2>
-                    </div>
-                    <button onClick={onClose} className="text-white hover:bg-white/10 p-2 rounded-full transition-colors">
-                        <X size={18} />
-                    </button>
-                </div>
-
-                {/* Scrollable Content */}
-                <div className="relative z-10 w-full h-full overflow-y-auto px-4 pt-20 pb-0 flex flex-col gap-5">
-
-                    {/* Profile Section */}
-                    <div className="flex items-center gap-4 bg-white/5 backdrop-blur-2xl p-5 rounded-[2.5rem] border border-white/10 shadow-2xl">
-                        <div className="relative shrink-0">
-                            <div className="h-14 w-14 rounded-full border-[3px] border-yellow-400 p-0.5 overflow-hidden bg-slate-800 shadow-lg">
-                                {user?.profilePicture ? (
-                                    <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-white text-xl font-black bg-indigo-600">
-                                        {user?.name?.charAt(0)}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <h3 className="text-white font-black text-xl tracking-tight leading-none mb-2 truncate">{user?.name}</h3>
-                            <div className="bg-white/10 px-3 py-1.5 rounded-full inline-flex items-center gap-2 shadow-inner border border-white/5">
-                                <div className="p-1 bg-purple-500 rounded-full shadow-sm">
-                                    <Star size={8} className="text-white fill-white" />
-                                </div>
-                                <span className="text-white text-[10px] font-black tracking-tight">{(stats?.points || 0).toLocaleString()} Total Points</span>
-                            </div>
-                        </div>
-                        <div className="shrink-0 flex items-center justify-center">
-                            <div className="p-3 bg-yellow-500/10 rounded-2xl border-2 border-yellow-500/20">
-                                <Crown size={32} className="text-yellow-400 drop-shadow-xl fill-yellow-400/10" strokeWidth={1.5} />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Hero Card: Daily Goal */}
-                    <div className="bg-white rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden flex flex-col items-center border border-indigo-50/50">
-                        <div className="w-full flex items-center justify-between gap-4 mb-6">
-                            {/* Target Illustration */}
-                            <div className="relative h-24 w-24 shrink-0">
-                                <div className="absolute inset-0 bg-red-50 rounded-full scale-110"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center shadow-inner">
-                                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center border-[3px] border-white shadow-md">
-                                            <div className="w-4 h-4 bg-red-900 rounded-full"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="absolute top-0 right-0 text-yellow-500">
-                                    <Sparkles size={16} fill="currentColor" />
-                                </div>
-                            </div>
-
-                            {/* Achievement Text */}
-                            <div className="flex-1 text-center py-2">
-                                <h1 className="text-[#1a237e] text-1xl font-black leading-none mb-3">Daily Goal</h1>
-                                {(stats?.dailyPoints || 0) >= (stats?.dailyGoal || 100) ? (
-                                    <div className="bg-purple-600 text-white px-5 py-2.5 rounded-2xl font-black text-base shadow-[0_8px_20px_rgba(147,51,234,0.3)] inline-block transform hover:scale-105 transition-transform cursor-default">
-                                        Achieved
-                                    </div>
-                                ) : (
-                                    <div className="bg-slate-100 text-slate-400 px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest inline-block">
-                                        In Progress
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Points Circle */}
-                            <div className="relative h-20 w-20 shrink-0">
-                                <svg className="w-full h-full -rotate-90">
-                                    <circle cx="40" cy="40" r="35" stroke="#f3e5f5" strokeWidth="6" fill="transparent" />
-                                    <motion.circle
-                                        cx="40" cy="40" r="35" stroke="#7e57c2" strokeWidth="6" fill="transparent"
-                                        initial={{ strokeDasharray: "220", strokeDashoffset: "220" }}
-                                        animate={{ strokeDashoffset: 220 - (220 * Math.min(1, (stats?.dailyPoints || 0) / (stats?.dailyGoal || 100))) }}
-                                        transition={{ duration: 1.5, delay: 0.2 }}
-                                        strokeLinecap="round"
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <Star size={12} className="text-purple-600 mb-0.5 fill-purple-600" />
-                                    <span className="text-[#1a237e] text-[9px] font-black leading-none">
-                                        {(stats?.dailyPoints || 0)}/{(stats?.dailyGoal || 100)}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Daily Stats Grid */}
-                        <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-100 pt-5">
-                            <div className="flex items-center gap-3 justify-center bg-slate-50/50 py-3 rounded-2xl transition-colors hover:bg-slate-100/50">
-                                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-xl shadow-sm">
-                                    <Trophy size={18} strokeWidth={2.5} />
-                                </div>
-                                <div>
-                                    <p className="text-[#1a237e] font-black text-xl leading-none mb-1">#{rank}</p>
-                                    <p className="text-slate-400 text-[8px] font-black uppercase tracking-widest leading-none">Daily Rank</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 justify-center bg-slate-50/50 py-3 rounded-2xl transition-colors hover:bg-slate-100/50">
-                                <div className="p-2 bg-yellow-100 text-yellow-600 rounded-xl shadow-sm">
-                                    <Zap size={18} fill="currentColor" strokeWidth={2.5} />
-                                </div>
-                                <div>
-                                    <p className="text-[#1a237e] font-black text-xl leading-none mb-1">{stats?.points || 0}</p>
-                                    <p className="text-slate-400 text-[8px] font-black uppercase tracking-widest leading-none">Total Points</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Sub-Cards Row */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white rounded-[2rem] p-5 shadow-xl flex flex-col h-full border border-slate-50">
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-[#1a237e] font-black text-[10px] uppercase tracking-tight">Course Progress</h4>
-                                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg shadow-sm">
-                                    <BookOpen size={10} strokeWidth={3} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 mb-4 flex-1">
-                                <div>
-                                    <p className="text-lg font-black text-[#1a237e] leading-none mb-1">{stats?.batchProgress || 0}%</p>
-                                    <p className="text-slate-400 text-[7px] font-black uppercase tracking-widest leading-none">Overall Progress</p>
-                                </div>
-                                <div>
-                                    <p className="text-lg font-black text-[#1a237e] leading-none mb-1">{stats?.enrolledCourses || 0}</p>
-                                    <p className="text-slate-400 text-[7px] font-black uppercase tracking-widest leading-none">Enrolled</p>
-                                </div>
-                            </div>
-                            <div className="mt-auto">
-                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: `${stats?.batchProgress || 0}%` }} className="h-full bg-emerald-500 rounded-full shadow-md" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-[2rem] p-5 shadow-xl flex flex-col h-full border border-slate-50">
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-[#1a237e] font-black text-[10px] uppercase tracking-tight">Weekly Goal</h4>
-                                <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg shadow-sm">
-                                    <Clock size={10} strokeWidth={3} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 mb-4 flex-1">
-                                <div>
-                                    <p className="text-lg font-black text-[#1a237e] leading-none mb-1">{activeDays}/7</p>
-                                    <p className="text-slate-400 text-[7px] font-black uppercase tracking-widest leading-none">Active Days</p>
-                                </div>
-                                <div>
-                                    <p className="text-lg font-black text-[#1a237e] leading-none mb-1">{activitySummary?.topicCount || 0}</p>
-                                    <p className="text-slate-400 text-[7px] font-black uppercase tracking-widest leading-none">Topics</p>
-                                </div>
-                            </div>
-                            <div className="mt-auto">
-                                <div className="flex gap-1.5 justify-between px-1">
-                                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
-                                        const isActive = safeWeeklyActivity[idx] && safeWeeklyActivity[idx].hours > 0;
-                                        return (
-                                            <div key={idx} className="flex flex-col items-center gap-1.5">
-                                                <div className={`h-2 w-2 rounded-full shadow-sm transition-all duration-300 ${isActive ? 'bg-indigo-500 scale-110 shadow-indigo-200' : 'bg-slate-200'}`} />
-                                                <span className="text-[7px] font-black text-slate-400">{day}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Share Your Progress */}
-                    <div className="mt-4 pb-2">
-                        <h3 className="text-center text-white/60 font-black text-[10px] uppercase tracking-[0.4em] mb-5">Share Your Progress</h3>
-                        <div className="grid grid-cols-3 gap-4">
-                            <button onClick={() => handleSmartShare('whatsapp')} className="bg-[#1a237e]/40 border border-white/10 hover:bg-white/10 h-14 rounded-2xl flex items-center justify-center transition-all group backdrop-blur-md">
-                                <MessageCircle className="text-white/40 group-hover:text-white transition-colors" size={20} />
-                            </button>
-                            <button onClick={() => handleSmartShare('linkedin')} className="bg-[#1a237e]/40 border border-white/10 hover:bg-white/10 h-14 rounded-2xl flex items-center justify-center transition-all group backdrop-blur-md">
-                                <Linkedin className="text-white/40 group-hover:text-white transition-colors" size={20} />
-                            </button>
-                            <button onClick={() => handleSmartShare('download')} className="bg-[#1a237e]/40 border border-white/10 hover:bg-white/10 h-14 rounded-2xl flex items-center justify-center transition-all group backdrop-blur-md">
-                                <Download className="text-white/40 group-hover:text-white transition-colors" size={20} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+import { FcReading } from 'react-icons/fc';
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState({
         enrolledCourses: 0,
@@ -567,23 +16,28 @@ const Dashboard = () => {
         batchProgress: 0,
         certificates: 0
     });
+    const [wallet, setWallet] = useState({ totalPoints: 0, totalCoins: 0, level: 1 });
+    const [completedTasks, setCompletedTasks] = useState(0);
     const [recentActivity, setRecentActivity] = useState([]);
     const [weeklyActivity, setWeeklyActivity] = useState([]);
     const [leaderboard, setLeaderboard] = useState([]);
     const [dailyLeaderboard, setDailyLeaderboard] = useState([]);
     const [weeklyLeaderboard, setWeeklyLeaderboard] = useState([]);
-    const [interviewLeaderboard, setInterviewLeaderboard] = useState([]);
-    const [leaderboardPeriod, setLeaderboardPeriod] = useState('weekly');
+    const [allTimeLeaderboard, setAllTimeLeaderboard] = useState([]);
+    const [weeklyRank, setWeeklyRank] = useState(null);
+    const [dailyRank, setDailyRank] = useState(null);
+    const [leaderboardPeriod, setLeaderboardPeriod] = useState('all_time');
     const [loading, setLoading] = useState(true);
-    const [showRankCard, setShowRankCard] = useState(false);
-    const [settings, setSettings] = useState(null);
+    const [activeOrbSlide, setActiveOrbSlide] = useState(0); // 0 = Daily, 1 = Weekly
+    const [showMiniLeaderboard, setShowMiniLeaderboard] = useState(false);
+    const [miniLeaderboardTab, setMiniLeaderboardTab] = useState('daily'); // 'daily' | 'weekly'
+    const [activeMobileTab, setActiveMobileTab] = useState('dashboard'); // 'dashboard' | 'profile'
 
     // Time-range activity chart state
     const [activityRange, setActivityRange] = useState('week'); // 'week' | 'month' | 'year'
     const [activityChartData, setActivityChartData] = useState([]);
     const [activitySummary, setActivitySummary] = useState({ totalHours: 0, topicCount: 0, activeDays: 0 });
     const [activityLoading, setActivityLoading] = useState(false);
-    const [mockHistory, setMockHistory] = useState([]);
 
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -597,17 +51,17 @@ const Dashboard = () => {
                         axios.get(`${import.meta.env.VITE_API_URL}/api/students/dashboard/${parsedUser._id}`),
                         axios.get(`${import.meta.env.VITE_API_URL}/api/students/leaderboard?studentId=${parsedUser._id}&period=weekly`),
                         axios.get(`${import.meta.env.VITE_API_URL}/api/students/leaderboard?studentId=${parsedUser._id}&period=daily`),
-                        axios.get(`${import.meta.env.VITE_API_URL}/api/students/leaderboard/interviews?studentId=${parsedUser._id}`),
-                        axios.get(`${import.meta.env.VITE_API_URL}/api/settings`),
-                        axios.get(`${import.meta.env.VITE_API_URL}/api/mock-interviews/student/${parsedUser._id}`)
+                        axios.get(`${import.meta.env.VITE_API_URL}/api/students/leaderboard?studentId=${parsedUser._id}&period=all_time`),
+                        axios.get(`${import.meta.env.VITE_API_URL}/api/rewards/wallet/${parsedUser._id}`),
+                        axios.get(`${import.meta.env.VITE_API_URL}/api/courses`)
                     ]);
 
                     const dashboardRes = results[0].status === 'fulfilled' ? results[0].value : null;
                     const weeklyRes = results[1].status === 'fulfilled' ? results[1].value : null;
                     const dailyRes = results[2].status === 'fulfilled' ? results[2].value : null;
-                    const interviewRes = results[3].status === 'fulfilled' ? results[3].value : null;
-                    const settingsRes = results[4].status === 'fulfilled' ? results[4].value : null;
-                    const mockRes = results[5].status === 'fulfilled' ? results[5].value : null;
+                    const allTimeRes = results[3].status === 'fulfilled' ? results[3].value : null;
+                    const walletRes = results[4].status === 'fulfilled' ? results[4].value : null;
+                    const coursesRes = results[5].status === 'fulfilled' ? results[5].value : null;
 
                     if (dashboardRes && dashboardRes.data.success) {
                         setStats(dashboardRes.data.stats);
@@ -615,50 +69,57 @@ const Dashboard = () => {
                         setWeeklyActivity(dashboardRes.data.weeklyActivity);
                     }
 
-                    if (settingsRes) {
-                        setSettings(settingsRes.data);
-                    }
-
-                    if (mockRes && mockRes.data.success) {
-                        setMockHistory(mockRes.data.history);
-                    }
-
                     if (weeklyRes && weeklyRes.data.success) {
                         setWeeklyLeaderboard(weeklyRes.data.leaderboard);
+                        const myInfo = weeklyRes.data.leaderboard.find(s => s.id === parsedUser._id);
+                        if (myInfo) setWeeklyRank(myInfo);
                         if (leaderboardPeriod === 'weekly') {
                             setLeaderboard(weeklyRes.data.leaderboard);
-                        }
-
-                        // Ranking Logic
-                        const myRankIndex = weeklyRes.data.leaderboard.findIndex(s => s.id === parsedUser._id);
-                        if (myRankIndex !== -1 && myRankIndex < 3) {
-                            const todayStr = new Date().toDateString();
-                            const lastShown = localStorage.getItem(`rankCardLastShown_${parsedUser._id}`);
-                            if (lastShown !== todayStr) {
-                                setShowRankCard(true);
-                                localStorage.setItem(`rankCardLastShown_${parsedUser._id}`, todayStr);
-                            }
                         }
                     }
 
                     if (dailyRes && dailyRes.data.success) {
                         setDailyLeaderboard(dailyRes.data.leaderboard);
+                        const myInfo = dailyRes.data.leaderboard.find(s => s.id === parsedUser._id);
+                        if (myInfo) setDailyRank(myInfo);
                         if (leaderboardPeriod === 'daily') {
                             setLeaderboard(dailyRes.data.leaderboard);
                         }
                     }
 
-                    if (interviewRes && interviewRes.data.success) {
-                        setInterviewLeaderboard(interviewRes.data.leaderboard);
-                        if (leaderboardPeriod === 'mocks') {
-                            setLeaderboard(interviewRes.data.leaderboard);
+                    if (allTimeRes && allTimeRes.data.success) {
+                        setAllTimeLeaderboard(allTimeRes.data.leaderboard);
+                        if (leaderboardPeriod === 'all_time') {
+                            setLeaderboard(allTimeRes.data.leaderboard);
+                        }
+                    }
+
+                    if (walletRes && walletRes.data.success) {
+                        setWallet({
+                            totalPoints: walletRes.data.totalPoints,
+                            totalCoins: walletRes.data.totalCoins,
+                            level: walletRes.data.level
+                        });
+                    }
+
+                    if (coursesRes && parsedUser.courseName) {
+                        const course = coursesRes.data.find(c => c.title === parsedUser.courseName);
+                        if (course) {
+                            try {
+                                const progressRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/student/progress/${course._id}/${parsedUser._id}`);
+                                if (progressRes.data && progressRes.data.progress) {
+                                    const completed = progressRes.data.progress.filter(p => p.completed).length;
+                                    setCompletedTasks(completed);
+                                }
+                            } catch (e) {
+                                console.error("Progress fetch error:", e);
+                            }
                         }
                     }
                 }
             }
         } catch (err) {
             console.error("Error loading dashboard:", err);
-            // toast.error("Failed to load dashboard data");
         } finally {
             setLoading(false);
         }
@@ -667,7 +128,6 @@ const Dashboard = () => {
     useEffect(() => {
         fetchDashboardData();
 
-        // Real-time synchronization event listener
         const handleSync = () => {
             fetchDashboardData();
         };
@@ -678,7 +138,6 @@ const Dashboard = () => {
         };
     }, [fetchDashboardData]);
 
-    // Fetch activity chart data when range tab changes
     const fetchActivity = async (range, studentId) => {
         if (!studentId) return;
         setActivityLoading(true);
@@ -695,7 +154,6 @@ const Dashboard = () => {
         }
     };
 
-    // Load activity whenever range changes
     useEffect(() => {
         const storedUser = localStorage.getItem('studentUser');
         if (storedUser) {
@@ -706,28 +164,17 @@ const Dashboard = () => {
         }
     }, [activityRange]);
 
-
-    // Helper to find mock rank safely
-    const getMockRank = () => {
-        if (!user || !interviewLeaderboard || interviewLeaderboard.length === 0) return null;
-        const index = interviewLeaderboard.findIndex(s => s.id === user._id);
-        if (index !== -1) {
-            return index + 1;
-        }
-        return null;
-    };
-    const mockRank = getMockRank();
-
     const statCards = [
-        { label: 'Enrolled Courses', value: stats.enrolledCourses, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Active' },
-        { label: 'Classes Attended', value: stats.attendance, icon: UserCheck, color: 'text-green-600', bg: 'bg-green-50', trend: 'Keep it up!' },
-        { label: 'Points Earned', value: stats.points || 0, icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Rewards' },
-        { label: 'Mock Rank', value: mockRank ? `#${mockRank}` : 'N/A', icon: Award, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Readiness' },
+        { label: 'Enrolled Courses', value: stats.enrolledCourses, icon: (p) => <FcReading {...p} />, cardBg: 'bg-blue-50/50', iconBg: 'bg-white', trendColor: 'text-blue-600 bg-blue-100', trend: 'Active', border: 'border-blue-100' },
+        { label: 'Daily Streak', value: `${stats.currentStreak || 0} Days`, icon: (p) => <Flame {...p} />, cardBg: 'bg-orange-50/50', iconBg: 'bg-orange-100/50 text-orange-500', trendColor: 'text-orange-600 bg-orange-100', trend: `Best: ${stats.highestStreak || 0}`, border: 'border-orange-100' },
+        { label: 'Certificates Obtained', value: stats.certificates || 0, icon: (p) => <Award {...p} />, cardBg: 'bg-purple-50/50', iconBg: 'bg-white', trendColor: 'text-purple-600 bg-purple-100', trend: 'Achievement', border: 'border-purple-100' },
     ];
 
-    // Helper to find user rank safely
-    const getUserRank = (type = 'weekly') => {
-        const targetLeaderboard = type === 'weekly' ? weeklyLeaderboard : dailyLeaderboard;
+    const getUserRank = (type = 'all_time') => {
+        let targetLeaderboard = allTimeLeaderboard;
+        if (type === 'weekly') targetLeaderboard = weeklyLeaderboard;
+        if (type === 'daily') targetLeaderboard = dailyLeaderboard;
+
         if (!user || !targetLeaderboard || targetLeaderboard.length === 0) return null;
         const index = targetLeaderboard.findIndex(s => s.id === user._id);
         if (index !== -1) {
@@ -736,418 +183,654 @@ const Dashboard = () => {
         return null;
     };
 
-    const userRankInfo = getUserRank('weekly');
-    const dailyRankInfo = getUserRank('daily');
+    const userRankInfo = getUserRank(leaderboardPeriod);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     return (
-        <div>
-            {/* Rank Card Modal */}
-            {showRankCard && userRankInfo && (
-                <RankCardModal
-                    rank={userRankInfo.rank}
-                    points={userRankInfo.points}
-                    user={user}
-                    stats={stats}
-                    activitySummary={activitySummary}
-                    weeklyActivity={weeklyActivity}
-                    settings={settings}
-                    onClose={() => setShowRankCard(false)}
-                />
-            )}
-            <div className="mb-6">
-                {/* Date removed, moved to navbar */}
+        <div className="w-full min-h-screen xl:h-screen flex flex-col p-4 md:p-6 overflow-y-auto xl:overflow-hidden bg-gray-50">
+            <style>{`
+                .scrollbar-none::-webkit-scrollbar {
+                    display: none;
+                }
+                .scrollbar-none {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            `}</style>
+
+            {/* Mobile/Tablet Segmented Tab Switcher (Only visible below xl) */}
+            <div className="xl:hidden flex p-1 bg-slate-200/50 rounded-xl border border-slate-200/70 mb-5 shrink-0 max-w-md mx-auto w-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+                <button
+                    onClick={() => setActiveMobileTab('dashboard')}
+                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${
+                        activeMobileTab === 'dashboard'
+                            ? 'bg-white text-orange-600 shadow-md ring-1 ring-slate-100 font-extrabold'
+                            : 'text-slate-500 hover:text-slate-800 font-bold'
+                    }`}
+                >
+                    Dashboard
+                </button>
+                <button
+                    onClick={() => setActiveMobileTab('profile')}
+                    className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${
+                        activeMobileTab === 'profile'
+                            ? 'bg-white text-orange-600 shadow-md ring-1 ring-slate-100 font-extrabold'
+                            : 'text-slate-500 hover:text-slate-800 font-bold'
+                    }`}
+                >
+                    Profile Details
+                </button>
             </div>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 xl:gap-8 h-auto xl:h-[calc(100vh-3rem)] items-start xl:items-stretch overflow-visible xl:overflow-hidden">
+                
+                {/* MIDDLE MAIN CONTENT (xl:col-span-3) - INDEPENDENT SCROLL */}
+                <div className={`xl:col-span-3 space-y-6 min-w-0 bg-gray-100/40 p-4 md:p-6 rounded-3xl border border-gray-200/60 shadow-sm h-auto xl:h-full overflow-y-visible xl:overflow-y-auto scrollbar-none pb-12 ${
+                    activeMobileTab === 'dashboard' ? 'block' : 'hidden xl:block'
+                }`}>
 
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        {statCards.map((stat, index) => {
+                            const Icon = stat.icon;
+                            return (
+                                <div key={index} className={`p-6 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all cursor-default`}>
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className={`p-3 rounded-xl ${stat.iconBg} shadow-sm`}>
+                                            <Icon size={24} />
+                                        </div>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${stat.trendColor}`}>{stat.trend}</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider">{stat.label}</p>
+                                        <h3 className="text-2xl font-black text-gray-900">{stat.value}</h3>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
 
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {statCards.map((stat, index) => (
-                    <div key={index} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-4">
-                            <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}>
-                                <stat.icon size={24} />
+                    {/* Learning Activity Chart with Time-Range Tabs */}
+                    <div className="bg-white p-6 rounded-2xl border border-gray-150 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                            <h2 className="text-lg font-bold text-gray-855">Learning Activity</h2>
+                            <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-lg border border-gray-100">
+                                {[{ key: 'week', label: 'Week' }, { key: 'month', label: 'Month' }, { key: 'year', label: 'Year' }].map(tab => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setActivityRange(tab.key)}
+                                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${activityRange === tab.key
+                                            ? 'bg-white text-orange-600 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
                             </div>
-                            <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{stat.trend}</span>
                         </div>
-                        <div>
-                            <p className="text-sm text-gray-500 font-medium mb-1">{stat.label}</p>
-                            <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
-                        </div>
-                    </div>
-                ))}
-            </div>
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-
-                {/* Activity Chart with Time-Range Tabs */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                    {/* Header: title + tabs */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                        <h2 className="text-lg font-bold text-gray-800">Learning Activity</h2>
-                        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-                            {[{ key: 'week', label: 'Week' }, { key: 'month', label: 'Month' }, { key: 'year', label: 'Year' }].map(tab => (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setActivityRange(tab.key)}
-                                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${activityRange === tab.key
-                                        ? 'bg-white text-indigo-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                        }`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Period Summary Row */}
-                    <div className="flex items-center gap-4 mb-4 px-1">
-                        <div className="flex items-center gap-1.5">
-                            <Trophy size={13} className="text-amber-400" />
-                            <span className="text-sm font-semibold text-gray-700">{activitySummary.totalPoints || 0}</span>
-                            <span className="text-xs text-gray-400">points</span>
-                        </div>
-                        <span className="text-gray-200">|</span>
-                        <div className="flex items-center gap-1.5">
-                            <Zap size={13} className="text-yellow-400" />
-                            <span className="text-sm font-semibold text-gray-700">{activitySummary.totalCoins || 0}</span>
-                            <span className="text-xs text-gray-400">coins</span>
-                        </div>
-                        <span className="text-gray-200">|</span>
-                        <div className="flex items-center gap-1.5">
-                            <Flame size={13} className="text-orange-400" />
-                            <span className="text-sm font-semibold text-gray-700">{activitySummary.activeDays || 0}</span>
-                            <span className="text-xs text-gray-400">active days</span>
-                        </div>
-                    </div>
-
-                    {/* Chart */}
-                    <div style={{ width: '100%', height: 260 }} className="relative">
-                        {activityLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-lg z-10">
-                                <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="flex items-center gap-4 mb-6 px-1">
+                            <div className="flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-100 shadow-sm">
+                                <Trophy size={16} className="text-orange-500" />
+                                <span className="text-base font-black text-orange-700">{activitySummary.totalPoints || 0}</span>
+                                <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">points</span>
                             </div>
-                        )}
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <BarChart data={activityChartData.length > 0 ? activityChartData : weeklyActivity}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#9CA3AF', fontSize: activityRange === 'month' ? 10 : 12 }}
-                                    dy={10}
-                                    interval={activityRange === 'month' ? 4 : 0}
-                                />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
-                                <Tooltip
-                                    cursor={{ fill: '#F9FAFB' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', padding: '12px' }}
-                                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                                />
-                                <Bar
-                                    dataKey="points"
-                                    name="Points"
-                                    fill="#6366F1"
-                                    radius={[4, 4, 0, 0]}
-                                    barSize={activityRange === 'month' ? 4 : activityRange === 'year' ? 12 : 20}
-                                />
-                                <Bar
-                                    dataKey="coins"
-                                    name="Coins"
-                                    fill="#F59E0B"
-                                    radius={[4, 4, 0, 0]}
-                                    barSize={activityRange === 'month' ? 4 : activityRange === 'year' ? 12 : 20}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+                            <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100 shadow-sm">
+                                <Flame size={16} className="text-indigo-500" />
+                                <span className="text-base font-black text-indigo-700">{activitySummary.activeDays || 0}</span>
+                                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">active days</span>
+                            </div>
+                        </div>
+
+                        <div style={{ width: '100%', height: 280 }} className="relative">
+                            {activityLoading && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-2xl z-10">
+                                    <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            )}
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                <BarChart data={activityChartData.length > 0 ? activityChartData : weeklyActivity} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#f97316" stopOpacity={1} />
+                                            <stop offset="95%" stopColor="#fbbf24" stopOpacity={0.8} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#94a3b8', fontSize: activityRange === 'month' ? 10 : 12, fontWeight: 700 }}
+                                        dy={10}
+                                        interval={activityRange === 'month' ? 4 : 0}
+                                    />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }} />
+                                    <Tooltip
+                                        cursor={{ fill: '#fff7ed' }}
+                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', padding: '12px 16px', backgroundColor: '#ffffff' }}
+                                        itemStyle={{ fontSize: '14px', fontWeight: '900', color: '#f97316' }}
+                                        labelStyle={{ color: '#64748b', fontWeight: 'bold', marginBottom: '4px' }}
+                                    />
+                                    <Bar
+                                        dataKey="points"
+                                        name="Points Earned"
+                                        fill="url(#colorPoints)"
+                                        radius={[12, 12, 0, 0]}
+                                        barSize={activityRange === 'month' ? 8 : activityRange === 'year' ? 16 : 28}
+                                        animationDuration={1500}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Recent Activity */}
+                    <div className="bg-white rounded-2xl border border-gray-150 shadow-sm p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-lg font-bold text-gray-800">Recent Completed Topics</h2>
+                        </div>
+
+                        <div className="space-y-4">
+                            {recentActivity.length > 0 ? (
+                                recentActivity.map((activity) => (
+                                    <div key={activity.id} className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
+                                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold shrink-0">
+                                            <CheckCircle size={18} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-gray-900 text-sm">{activity.topic}</h4>
+                                            <p className="text-xs text-gray-500 mt-0.5">{activity.course}</p>
+                                        </div>
+                                        <span className="text-xs text-gray-400">
+                                            {new Date(activity.date).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-gray-500 text-center py-8">No recent activity found. Start learning!</p>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-
-                {/* Leaderboard Widget - Executive Grid Refined v4.2 */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-xl flex flex-col h-full overflow-hidden">
-                    <div className="p-4 pb-3 flex items-center justify-between bg-white border-b border-gray-50">
-                        <h2 className="text-lg font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                            <Trophy className="text-amber-500" size={20} />
-                            {leaderboardPeriod === 'mocks' ? 'Interview Readiness' : 'Top Learners'}
-                        </h2>
-                    </div>
-                    <div className="p-4 pb-3 flex items-center justify-between bg-white border-b border-gray-50">
-
-                        <div className="flex items-center gap-4">
-
-                            {/* Period Toggle */}
-                            <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
-                                <button
-                                    onClick={() => { setLeaderboardPeriod('daily'); setLeaderboard(dailyLeaderboard); }}
-                                    className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${leaderboardPeriod === 'daily' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    Day
-                                </button>
-                                <button
-                                    onClick={() => { setLeaderboardPeriod('weekly'); setLeaderboard(weeklyLeaderboard); }}
-                                    className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${leaderboardPeriod === 'weekly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    Week
-                                </button>
-                                <button
-                                    onClick={() => { setLeaderboardPeriod('mocks'); setLeaderboard(interviewLeaderboard); }}
-                                    className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${leaderboardPeriod === 'mocks' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    Mocks
-                                </button>
-                            </div>
-                        </div>
-                        {userRankInfo && (
-                            <button
-                                onClick={() => setShowRankCard(true)}
-                                className="text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-xl transition-all duration-300 border border-indigo-100/50"
+                {/* RIGHT STUDENT PROFILE COLUMN (xl:col-span-1) - GOLDEN IVORY ARCADE */}
+                <div className={`xl:col-span-1 flex flex-col h-auto xl:h-full overflow-y-auto scrollbar-none min-w-0 ${
+                    activeMobileTab === 'profile' ? 'block' : 'hidden xl:block'
+                }`}>
+                    
+                    {/* STICKY HEADER ROW: Premium Passport Badge (8px Rounded corners - Enlarge edition) */}
+                    {!showMiniLeaderboard && (
+                        <div className="sticky top-0 bg-gray-50 pb-4 z-10 shrink-0">
+                            <motion.div 
+                                whileHover={{ y: -2 }}
+                                className="bg-white border border-slate-200/90 rounded-[8px] p-6 shadow-[0_16px_32px_rgba(0,0,0,0.03)] relative overflow-hidden flex flex-col items-center text-center"
                             >
-                                Status
-                            </button>
-                        )}
-                    </div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+                                
+                                {/* Action Buttons Deck (Settings & Sign Out) */}
+                                <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+                                    <button 
+                                        onClick={() => navigate('/settings')}
+                                        className="p-1 rounded-[6px] border border-slate-200 bg-white hover:bg-slate-50 text-slate-450 hover:text-slate-650 transition-all shadow-sm"
+                                        title="Settings"
+                                    >
+                                        <Settings size={12} className="stroke-[2.5]" />
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            localStorage.removeItem('studentUser');
+                                            navigate('/login');
+                                        }}
+                                        className="p-1 rounded-[6px] border border-red-100 bg-red-50/50 hover:bg-red-50 text-red-500 hover:text-red-650 transition-all shadow-sm"
+                                        title="Sign Out"
+                                    >
+                                        <LogOut size={12} className="stroke-[2.5]" />
+                                    </button>
+                                </div>
 
-                    <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6 custom-scrollbar">
-                        {leaderboard.length > 0 ? (
-                            <div className="space-y-4">
-                                {/* TOP 3 ELITE TIER */}
-                                <div className="space-y-3 p-3 bg-gray-50/50 rounded-2xl border border-gray-100/50 relative overflow-hidden">
-                                    {/* RANK 1 */}
-                                    {leaderboard[0] && (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="bg-white border border-amber-100/50 rounded-xl p-2.5 flex items-center gap-3 shadow-sm"
-                                        >
-                                            <div className="relative shrink-0">
-                                                <div className="w-12 h-12 rounded-xl overflow-hidden ring-2 ring-amber-50 shadow-inner">
-                                                    {leaderboard[0].profilePicture ? (
-                                                        <img
-                                                            src={leaderboard[0].profilePicture}
-                                                            className="w-full h-full object-cover pointer-events-none select-none"
-                                                            crossOrigin="anonymous"
-                                                            onContextMenu={(e) => e.preventDefault()}
-                                                            draggable="false"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-amber-50 text-amber-600 text-lg font-black">
-                                                            {leaderboard[0].name?.charAt(0)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-lg flex items-center justify-center text-[9px] font-black text-white shadow-lg border-2 border-white">1</div>
+                                {/* Centered Profile Avatar with Premium Golden Frame */}
+                                <div className="relative shrink-0 mb-3 mt-1 group">
+                                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white p-[2.5px] border-2 border-amber-400 shadow-md ring-4 ring-amber-100/50">
+                                        {user?.profilePicture ? (
+                                            <img
+                                                src={user.profilePicture}
+                                                alt={user?.name}
+                                                className="w-full h-full object-cover rounded-full"
+                                                crossOrigin="anonymous"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-amber-700 font-black text-2xl bg-amber-50 rounded-full">
+                                                {user?.name?.charAt(0) || 'B'}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-gray-900 font-extrabold text-sm truncate tracking-tight leading-none uppercase">{leaderboard[0].name}</h3>
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    <Crown size={10} className="text-amber-500" />
-                                                    <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">
-                                                        {leaderboardPeriod === 'mocks'
-                                                            ? `${leaderboard[0].points}/10 • ${leaderboard[0].status || 'READY'}`
-                                                            : `${leaderboard[0].points} PTS • TOP OF BATCH`
-                                                        }
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
+                                        )}
+                                    </div>
+                                    <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-1 border-2 border-white shadow-sm">
+                                        <Trophy size={11} className="fill-white" />
+                                    </div>
+                                </div>
+                                
+                                {/* Centered Name and Rank Details (Immune to squishing/overflow) */}
+                                <div className="flex flex-col items-center w-full min-w-0">
+                                    <h3 className="font-black text-slate-800 text-lg md:text-xl leading-tight truncate tracking-tight w-full px-2">
+                                        {user?.name || 'Balaganesh Mala'}
+                                    </h3>
+                                    <button
+                                        onClick={() => setShowMiniLeaderboard(true)}
+                                        className="flex items-center gap-1.5 text-xs font-black text-indigo-650 hover:text-indigo-850 transition-colors mt-2.5 bg-indigo-50/80 px-3.5 py-1.5 rounded-[8px] border border-indigo-100 shadow-sm"
+                                    >
+                                        <Trophy size={12} className="text-indigo-500 fill-indigo-500/10 animate-pulse" />
+                                        <span>Rank {dailyRank?.rank ? `#${dailyRank.rank}` : '--'}</span>
+                                        <span className="text-[10px] font-bold text-indigo-400">&gt;</span>
+                                    </button>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2.5 leading-none">
+                                        {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </span>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
 
-                                    {/* RANK 2 & 3 GRID */}
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {[leaderboard[1], leaderboard[2]].map((student, i) => student && (
-                                            <motion.div
-                                                key={student.id}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: 0.1 * (i + 1) }}
-                                                className="bg-white border border-gray-100 rounded-xl p-2 flex items-center gap-2"
+                    {/* CONSOLE PANELS */}
+                    <div className="flex-grow space-y-6 pb-12 pr-1">
+                        
+                        {showMiniLeaderboard ? (
+                            /* MINI LEADERBOARD CONSOLE PANEL (Inline replacement) */
+                            <motion.div 
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-white border border-slate-200/90 rounded-[8px] p-5 shadow-[0_16px_32px_rgba(0,0,0,0.02)] space-y-4"
+                            >
+                                {/* Back Link */}
+                                <button
+                                    onClick={() => setShowMiniLeaderboard(false)}
+                                    className="flex items-center gap-1 text-[11px] font-black text-slate-450 hover:text-slate-650 transition-colors uppercase tracking-wider"
+                                >
+                                    <span className="text-sm font-black">&lt;</span> Back
+                                </button>
+
+                                {/* Header Title Row */}
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-[#ecfeff] flex items-center justify-center text-[#06b6d4]">
+                                        <Trophy size={18} className="fill-[#06b6d4]/10" />
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-800 tracking-tight">Leaderboard</h3>
+                                </div>
+
+                                {/* Tabs Segment */}
+                                <div className="bg-slate-100 p-1 rounded-[8px] flex items-center">
+                                    <button
+                                        onClick={() => setMiniLeaderboardTab('daily')}
+                                        className={`flex-1 py-1.5 text-center text-xs font-black rounded-[6px] transition-all ${
+                                            miniLeaderboardTab === 'daily' 
+                                                ? 'bg-white text-slate-800 shadow-sm' 
+                                                : 'text-slate-400 hover:text-slate-650'
+                                        }`}
+                                    >
+                                        Daily
+                                    </button>
+                                    <button
+                                        onClick={() => setMiniLeaderboardTab('weekly')}
+                                        className={`flex-1 py-1.5 text-center text-xs font-black rounded-[6px] transition-all ${
+                                            miniLeaderboardTab === 'weekly' 
+                                                ? 'bg-white text-slate-800 shadow-sm' 
+                                                : 'text-slate-400 hover:text-slate-650'
+                                        }`}
+                                    >
+                                        Weekly
+                                    </button>
+                                </div>
+
+                                {/* Subheader Date Banner */}
+                                <div className="bg-indigo-50/60 text-slate-700 py-2.5 px-4 rounded-[8px] flex justify-between items-center text-xs font-black border border-indigo-50">
+                                    <span>{miniLeaderboardTab === 'daily' ? "Today's Leaderboard" : "Weekly Leaderboard"}</span>
+                                    <span className="text-[10px] text-slate-400">
+                                        {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                </div>
+
+                                {/* Leaderboard List */}
+                                <div className="space-y-1.5 max-h-[350px] overflow-y-auto pr-0.5 scrollbar-none">
+                                    {(miniLeaderboardTab === 'daily' ? dailyLeaderboard : weeklyLeaderboard).map((entry, idx) => {
+                                        const isMe = entry.id === user?._id;
+                                        return (
+                                            <div 
+                                                key={entry.id || idx}
+                                                className={`flex items-center justify-between p-3 rounded-[8px] transition-all ${
+                                                    isMe 
+                                                        ? 'bg-[#d2f8ff] border-l-4 border-[#06b6d4] shadow-sm' 
+                                                        : 'bg-white border border-slate-100 hover:bg-slate-50'
+                                                }`}
                                             >
-                                                <div className="relative shrink-0">
-                                                    <div className={`w-8 h-8 rounded-lg overflow-hidden border p-0.5 bg-white ${i === 0 ? 'border-gray-200' : 'border-orange-100'}`}>
-                                                        {student.profilePicture ? (
-                                                            <img
-                                                                src={student.profilePicture}
-                                                                className="w-full h-full object-cover rounded-md pointer-events-none select-none"
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    {/* Rank Number */}
+                                                    <span className={`text-xs font-black w-6 text-center ${
+                                                        isMe ? 'text-[#06b6d4]' : 'text-slate-400'
+                                                    }`}>
+                                                        {entry.rank || '--'}
+                                                    </span>
+                                                    {/* Avatar */}
+                                                    <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                                                        {entry.profilePicture ? (
+                                                            <img 
+                                                                src={entry.profilePicture} 
+                                                                alt={entry.name}
+                                                                className="w-full h-full object-cover"
                                                                 crossOrigin="anonymous"
-                                                                onContextMenu={(e) => e.preventDefault()}
-                                                                draggable="false"
                                                             />
                                                         ) : (
-                                                            <div className={`w-full h-full flex items-center justify-center text-[10px] font-black ${i === 0 ? 'text-gray-400' : 'text-orange-500'}`}>
-                                                                {student.name?.charAt(0)}
+                                                            <div className="w-full h-full flex items-center justify-center text-xs font-black text-slate-550 bg-slate-200">
+                                                                {entry.name?.charAt(0) || 'S'}
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-md flex items-center justify-center text-[8px] font-black border border-white shadow-sm ${i === 0 ? 'bg-gray-200 text-gray-600' : 'bg-orange-100 text-orange-700'}`}>
-                                                        {i + 2}
-                                                    </div>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-gray-900 font-bold text-[10px] truncate leading-none mb-0.5">{student.name.split(' ')[0]}</p>
-                                                    <span className="text-gray-500 font-black text-[9px]">
-                                                        {student.points} {leaderboardPeriod === 'mocks' ? '/10' : <span className="text-[7px] font-bold">PTS</span>}
+                                                    {/* Name */}
+                                                    <span className={`text-xs font-bold truncate ${
+                                                        isMe ? 'text-slate-900 font-extrabold' : 'text-slate-700 font-medium'
+                                                    }`}>
+                                                        {entry.name || 'Student'}
                                                     </span>
                                                 </div>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                </div>
 
-                                {/* NORMAL LIST - RANK 4-10 */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 px-1 mb-2">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                            {leaderboardPeriod === 'mocks' ? 'Batch Readiness Ranks' : 'Batch Top 10'}
-                                        </span>
-                                        <div className="h-[1px] flex-1 bg-gray-50"></div>
-                                    </div>
-                                    {leaderboard.slice(3, 10).map((student, idx) => (
-                                        <motion.div
-                                            key={student.id}
-                                            initial={{ opacity: 0, x: -5 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.05 * idx }}
-                                            className={`flex items-center justify-between p-2 rounded-xl transition-all duration-300 group/row h-10 ${user && user._id === student.id
-                                                ? 'bg-indigo-50/50'
-                                                : 'hover:bg-gray-50/50'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[10px] font-black text-gray-300 w-4 text-center">{idx + 4}</span>
-                                                <div className="h-7 w-7 rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                                                    {student.profilePicture ? (
-                                                        <img
-                                                            src={student.profilePicture}
-                                                            alt={student.name}
-                                                            className="w-full h-full object-cover pointer-events-none select-none"
-                                                            crossOrigin="anonymous"
-                                                            onContextMenu={(e) => e.preventDefault()}
-                                                            draggable="false"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-white text-gray-400 text-[9px] font-black">
-                                                            {student.name?.charAt(0)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className={`text-[11px] font-bold uppercase leading-none ${user && user._id === student.id ? 'text-indigo-900' : 'text-gray-700'}`}>
-                                                        {student.name}
-                                                    </p>
+                                                {/* Points Star Badge */}
+                                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100/50 shrink-0">
+                                                    <Award size={11} className="text-indigo-650 fill-indigo-200" />
+                                                    <span className="text-[11px] font-black text-indigo-750">
+                                                        {entry.points || 0}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                {leaderboardPeriod === 'mocks' && (
-                                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-lg uppercase tracking-tight ${student.status === 'Job Ready' ? 'bg-green-100 text-green-700' :
-                                                        student.status === 'Highly Capable' ? 'bg-indigo-100 text-indigo-700' :
-                                                            'bg-gray-100 text-gray-600'
-                                                        }`}>
-                                                        {student.status?.split(' ')[0]}
-                                                    </span>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <>
+                                {/* Achievements Deck (Royal Archive - Compact 8px Rounded corners) */}
+                                <motion.div 
+                                    whileHover={{ y: -1 }}
+                                    className="bg-white border border-slate-200/80 rounded-[8px] p-4 shadow-[0_6px_16px_rgba(0,0,0,0.01)] relative overflow-hidden"
+                                >
+                                    <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                                        <h4 className="font-black text-slate-800 text-[10px] tracking-wider uppercase">Royal Archive</h4>
+                                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-[8px] border border-emerald-100/50">⚡ Active</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        {/* Streak Badge */}
+                                        <div className="flex flex-col items-center justify-center bg-orange-50/40 border border-orange-100/30 rounded-[8px] py-2 px-1">
+                                            <span className="text-sm font-black text-slate-850 leading-tight">
+                                                {stats.currentStreak || 0}
+                                            </span>
+                                            <span className="text-[8px] font-black text-orange-500 uppercase tracking-widest leading-none mt-1">
+                                                Streaks
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Points Badge */}
+                                        <div className="flex flex-col items-center justify-center bg-indigo-50/40 border border-indigo-100/30 rounded-[8px] py-2 px-1">
+                                            <span className="text-sm font-black text-slate-850 leading-tight">
+                                                {wallet.totalPoints || 0}
+                                            </span>
+                                            <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest leading-none mt-1">
+                                                Points
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Coins Badge */}
+                                        <div className="flex flex-col items-center justify-center bg-amber-50/40 border border-amber-100/30 rounded-[8px] py-2 px-1">
+                                            <span className="text-sm font-black text-slate-850 leading-tight">
+                                                {wallet.totalCoins || 0}
+                                            </span>
+                                            <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest leading-none mt-1">
+                                                Coins
+                                            </span>
+                                        </div>
+                                    </div>
+                                </motion.div>
+
+                                {/* Active Orbs Carousel with Weekly Tracker (Compact 8px Rounded corners) */}
+                                {(() => {
+                                    const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                                    const now = new Date();
+                                    const currentDayIdx = now.getDay(); // 0 is Sunday, 1 is Monday...
+
+                                    // Build weekly challenge completed days (if student achieved at least 100 XP on that day)
+                                    // Using standard weeklyActivity array
+                                    const weeklyDays = daysOfWeek.map((day, idx) => {
+                                        // weeklyActivity starts with Monday (idx 0), but our day array starts with Sunday (idx 0)
+                                        // Let's map it safely
+                                        const activityDaysMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                        const dayName = activityDaysMap[idx];
+                                        const activityForDay = weeklyActivity.find(a => a.name === dayName);
+                                        const completed = activityForDay ? (activityForDay.points >= 100) : false;
+
+                                        return {
+                                            day,
+                                            completed
+                                        };
+                                    });
+
+                                    const completedCount = weeklyDays.filter(d => d.completed).length;
+                                    const weeklyGoalAchieved = completedCount >= 5;
+
+                                    return (
+                                        <motion.div 
+                                            whileHover={{ y: -2 }}
+                                            className="bg-white border border-slate-200/85 rounded-[8px] p-5 shadow-[0_12px_24px_rgba(0,0,0,0.015)] relative overflow-hidden"
+                                        >
+                                            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+                                            
+                                            {/* Header Controls */}
+                                            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Active Orbs</span>
+                                                </div>
+                                                
+                                                {/* Carousel Tabs */}
+                                                <div className="flex bg-slate-100 p-0.5 rounded-[6px]">
+                                                    <button 
+                                                        onClick={() => setActiveOrbSlide(0)}
+                                                        className={`px-2.5 py-1 text-[9px] font-black rounded-[4px] transition-all ${activeOrbSlide === 0 ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-650'}`}
+                                                    >
+                                                        Daily
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setActiveOrbSlide(1)}
+                                                        className={`px-2.5 py-1 text-[9px] font-black rounded-[4px] transition-all ${activeOrbSlide === 1 ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-650'}`}
+                                                    >
+                                                        Weekly
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Slide Content */}
+                                            <div className="relative min-h-[105px]">
+                                                {activeOrbSlide === 0 ? (
+                                                    /* Daily Focus Slide */
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        className="flex items-center gap-5"
+                                                    >
+                                                        <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
+                                                            <svg className="w-full h-full transform -rotate-90">
+                                                                <circle
+                                                                    cx="32"
+                                                                    cy="32"
+                                                                    r="27"
+                                                                    stroke="#e2e8f0"
+                                                                    strokeWidth="4"
+                                                                    fill="transparent"
+                                                                />
+                                                                <circle
+                                                                    cx="32"
+                                                                    cy="32"
+                                                                    r="27"
+                                                                    stroke="url(#uxDailyIndigo)"
+                                                                    strokeWidth="4"
+                                                                    fill="transparent"
+                                                                    strokeDasharray={2 * Math.PI * 27}
+                                                                    strokeDashoffset={2 * Math.PI * 27 * (1 - Math.min((stats.dailyPoints || 0) / 100, 1))}
+                                                                    strokeLinecap="round"
+                                                                    className="transition-all duration-700 ease-out"
+                                                                />
+                                                            </svg>
+                                                            <div className="absolute flex flex-col items-center justify-center">
+                                                                <span className="text-[10px] font-black text-slate-800">{stats.dailyPoints || 0}/100</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-black text-slate-800">Daily Focus Goal</span>
+                                                            <p className="text-[10px] text-slate-400 mt-1 leading-normal font-bold">
+                                                                Earn 100 XP today to complete your daily challenge and secure pool rewards!
+                                                            </p>
+                                                            <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mt-2">Goal XP Indicator</span>
+                                                        </div>
+                                                    </motion.div>
+                                                ) : (
+                                                    /* Weekly Focus Slide with Tracker Grid */
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, x: 10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        className="flex flex-col gap-4"
+                                                    >
+                                                        <div className="flex items-center gap-5">
+                                                            <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
+                                                                <svg className="w-full h-full transform -rotate-90">
+                                                                    <circle
+                                                                        cx="32"
+                                                                        cy="32"
+                                                                        r="27"
+                                                                        stroke="#d1fae5"
+                                                                        strokeWidth="4"
+                                                                        fill="transparent"
+                                                                    />
+                                                                    <circle
+                                                                        cx="32"
+                                                                        cy="32"
+                                                                        r="27"
+                                                                        stroke="url(#uxWeeklyEmerald)"
+                                                                        strokeWidth="4"
+                                                                        fill="transparent"
+                                                                        strokeDasharray={2 * Math.PI * 27}
+                                                                        strokeDashoffset={2 * Math.PI * 27 * (1 - Math.min((weeklyRank?.points || 0) / 500, 1))}
+                                                                        strokeLinecap="round"
+                                                                        className="transition-all duration-700 ease-out"
+                                                                    />
+                                                                </svg>
+                                                                <div className="absolute flex flex-col items-center justify-center">
+                                                                    <span className="text-[10px] font-black text-slate-800">{weeklyRank?.points || 0}/500</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-black text-slate-800">Weekly Focus Goal</span>
+                                                                <p className="text-[10px] text-slate-400 mt-0.5 leading-normal font-bold">
+                                                                    Reach 500 XP and sustain at least 5 completed daily challenges this week!
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Calendar Grid (S, M, T, W, T, F, S) */}
+                                                        <div className="flex flex-col gap-2 bg-slate-50/50 border border-slate-100 p-2.5 rounded-[8px]">
+                                                            <div className="flex justify-between items-center px-1">
+                                                                {weeklyDays.map((d, idx) => (
+                                                                    <div key={idx} className="flex flex-col items-center gap-1">
+                                                                         <span className="text-[8px] font-black text-slate-400 uppercase">{d.day}</span>
+                                                                         {d.completed ? (
+                                                                             <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-sm shadow-emerald-500/10">
+                                                                                 <CheckCircle size={10} className="stroke-[3]" />
+                                                                             </div>
+                                                                         ) : (
+                                                                             <div className="w-5 h-5 rounded-full border border-dashed border-slate-200 bg-white flex items-center justify-center text-slate-350">
+                                                                                 <span className="text-[8px] font-bold">•</span>
+                                                                             </div>
+                                                                         )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            {weeklyGoalAchieved ? (
+                                                                <div className="bg-emerald-50 border border-emerald-100/50 text-center py-1 rounded-[4px] flex items-center justify-center gap-1">
+                                                                    <span className="text-[9px] font-black text-emerald-700">🎉 Weekly Goal Achieved!</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="bg-slate-100 border border-slate-200/50 text-center py-1 rounded-[4px] flex items-center justify-center gap-1">
+                                                                    <span className="text-[9px] font-black text-slate-500">🎯 Challenge: {completedCount}/5 Days Completed</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </motion.div>
                                                 )}
-                                                <span className="text-[10px] font-black text-gray-500 uppercase">
-                                                    {student.points} <span className="text-[8px] font-bold opacity-60">{leaderboardPeriod === 'mocks' ? '/10' : 'PTS'}</span>
-                                                </span>
+                                            </div>
+                                            
+                                            {/* Gradients Defs */}
+                                            <svg className="absolute w-0 h-0">
+                                                <defs>
+                                                    <linearGradient id="uxDailyIndigo" x1="0" y1="0" x2="1" y2="1">
+                                                        <stop offset="0%" stopColor="#6366f1" />
+                                                        <stop offset="100%" stopColor="#4f46e5" />
+                                                    </linearGradient>
+                                                    <linearGradient id="uxWeeklyEmerald" x1="0" y1="0" x2="1" y2="1">
+                                                        <stop offset="0%" stopColor="#10b981" />
+                                                        <stop offset="100%" stopColor="#059669" />
+                                                    </linearGradient>
+                                                </defs>
+                                            </svg>
+                                            
+                                            {/* Bottom Reward Panel */}
+                                            <div className="mt-4 pt-3.5 border-t border-dashed border-slate-200 flex items-center justify-between text-xs text-slate-500 font-bold">
+                                                <span>Total Pool Reward:</span>
+                                                <div className="flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-[8px] border border-amber-500/20">
+                                                    <Coins size={12} className="text-amber-600 fill-amber-500/10 animate-bounce" />
+                                                    <span className="text-xs font-black text-amber-700">250 Coins</span>
+                                                </div>
                                             </div>
                                         </motion.div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-center py-20 opacity-40">
-                                <Target size={32} className="text-gray-300 mb-2" />
-                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Loading Entries</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                    );
+                                })()}
 
-                {/* Recent Activity */}
-                <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-lg font-bold text-gray-800">Recent Completed Topics</h2>
-                    </div>
-
-                    <div className="space-y-4">
-                        {recentActivity.length > 0 ? (
-                            recentActivity.map((activity) => (
-                                <div key={activity.id} className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100">
-                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold shrink-0">
-                                        <CheckCircle size={18} />
+                                {/* Active Streak Track Card */}
+                                <motion.div 
+                                    whileHover={{ y: -2 }}
+                                    className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.02)]"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="font-black text-slate-800 text-sm tracking-tight">Active Streak Track</h4>
+                                        <span className="text-[9px] font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100/50">🔥 Best: {stats.highestStreak || 0}</span>
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-medium text-gray-900 text-sm">{activity.topic}</h4>
-                                        <p className="text-xs text-gray-500 mt-0.5">{activity.course}</p>
+                                    
+                                    <div className="relative py-2">
+                                        <div className="flex items-center justify-between text-[10px] font-black text-slate-400 mb-2">
+                                            <span>Day 0</span>
+                                            <span className="text-amber-600 flex items-center gap-1">⚡ {stats.currentStreak || 0} Streak</span>
+                                            <span>Day 30</span>
+                                        </div>
+                                        <div className="h-3 bg-slate-100 rounded-full relative p-[2px] border border-slate-200/50 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 rounded-full transition-all duration-700 shadow-md relative overflow-hidden"
+                                                style={{ width: `${Math.min(((stats.currentStreak || 0) / 30) * 100, 100)}%` }}
+                                            >
+                                                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <span className="text-xs text-gray-400">
-                                        {new Date(activity.date).toLocaleDateString()}
-                                    </span>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-gray-500 text-center py-8">No recent activity found. Start learning!</p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Interview Performance Trends */}
-                <div className="lg:col-span-1 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-800">Interview Readiness</h2>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Mock Trends</p>
-                        </div>
-                        <TrendingUp size={20} className="text-indigo-500" />
-                    </div>
-
-                    <div className="h-40 w-full mb-6">
-                        {mockHistory.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={mockHistory.slice().reverse().slice(-5).map(h => ({
-                                    date: new Date(h.interviewDate || h.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                                    score: h.overallScore
-                                }))}>
-                                    <XAxis dataKey="date" hide />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', fontSize: '10px' }}
-                                    />
-                                    <Bar dataKey="score" fill="#6366F1" radius={[4, 4, 0, 0]} barSize={20} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-center opacity-30">
-                                <Sparkles size={24} className="mb-2" />
-                                <p className="text-[10px] font-bold uppercase">No Mocks Yet</p>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-3">
-                        {mockHistory.length > 0 ? (
-                            mockHistory.slice(0, 3).map((h, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-all">
-                                    <div>
-                                        <p className="text-[11px] font-bold text-gray-900 leading-none mb-1">{h.interviewType}</p>
-                                        <p className="text-[9px] text-gray-400 font-medium">{new Date(h.interviewDate || h.createdAt).toLocaleDateString()}</p>
-                                    </div>
-                                    <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">{h.overallScore}/10</span>
-                                </div>
-                            ))
-                        ) : (
-                            <button className="w-full py-2 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase rounded-xl hover:bg-indigo-100 transition-all">
-                                Schedule First Mock
-                            </button>
+                                </motion.div>
+                            </>
                         )}
                     </div>
                 </div>
 
             </div>
         </div>
-
     );
 };
 

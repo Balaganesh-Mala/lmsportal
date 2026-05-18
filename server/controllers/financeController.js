@@ -459,3 +459,63 @@ exports.createStandaloneInstallment = async (req, res) => {
     res.status(500).json({ message: 'Error creating custom installment', error: error.message });
   }
 };
+
+// @desc    Generate and stream receipt PDF for an installment
+// @route   GET /api/finance/installments/:id/receipt-pdf
+// @access  Private
+exports.getReceiptPDF = async (req, res) => {
+  try {
+    const installmentId = req.params.id;
+
+    // 1. Fetch Installment
+    const installment = await Installment.findById(installmentId).populate('student_id');
+    if (!installment) {
+      return res.status(404).json({ message: 'Installment not found' });
+    }
+
+    // 2. Fetch Payment details
+    const payment = await PaymentHistory.findOne({ installment_id: installmentId });
+
+    // 3. Fetch Settings
+    const settings = await Setting.findOne() || {};
+
+    // 4. Fetch Batch Name
+    const BatchStudent = require('../models/BatchStudent');
+    const batchStudent = await BatchStudent.findOne({ studentId: installment.student_id?._id }).populate('batchId');
+    const batchName = batchStudent?.batchId?.name || '';
+
+    // 5. Calculate Fee Summary (total, pending, previousPaid, isSubscription)
+    const allInst = await Installment.find({ student_id: installment.student_id?._id });
+    const isSubscription = installment.installment_no === 99;
+    const courseInstallments = allInst.filter(i => i.installment_no !== 99);
+    
+    const totalPaidAtTime = courseInstallments
+        .filter(i => (i.status === 'Paid' || i._id.toString() === installment._id.toString()) && i.installment_no <= installment.installment_no)
+        .reduce((sum, i) => sum + i.amount, 0);
+    
+    const totalFee = courseInstallments.reduce((sum, i) => sum + i.amount, 0);
+    const previousPaid = isSubscription ? 0 : totalPaidAtTime - installment.amount;
+    const pending = totalFee - (isSubscription ? 0 : totalPaidAtTime);
+
+    const feeSummary = {
+      total: totalFee,
+      pending,
+      previousPaid,
+      isSubscription
+    };
+
+    // 6. Generate Receipt PDF
+    const { generateReceiptPDF } = require('../utils/pdfGenerator');
+    await generateReceiptPDF({
+      installment,
+      payment,
+      settings,
+      feeSummary,
+      batchName
+    }, res);
+
+  } catch (error) {
+    console.error("Failed to generate receipt PDF:", error);
+    res.status(500).json({ message: 'Error generating receipt PDF', error: error.message });
+  }
+};

@@ -46,6 +46,26 @@ const uploadToCloudinary = async (filePath, folder) => {
 
 // ... (other routes)
 
+// @route   GET /api/students/check-email
+// @desc    Check if email already exists
+// @access  Public
+router.get('/check-email', async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required' });
+        }
+        const student = await Student.findOne({ email: email.toLowerCase() });
+        if (student) {
+            return res.json({ success: true, exists: true });
+        }
+        res.json({ success: true, exists: false });
+    } catch (err) {
+        console.error('Check Email Error:', err);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 // @route   POST /api/students/login
 // @desc    Login student
 // @access  Public
@@ -84,12 +104,130 @@ router.post('/login', async (req, res) => {
                 email: student.email,
                 access: student.access,
                 courseName: student.courseName,
-                status: student.status
+                status: student.status,
+                trialEndsAt: student.trialEndsAt,
+                isSubscribed: student.isSubscribed,
+                activePlan: student.activePlan,
+                planTier: student.planTier,
+                subscriptionStartedAt: student.subscriptionStartedAt,
+                subscriptionExpiresAt: student.subscriptionExpiresAt
             }
         });
     } catch (err) {
         console.error('Login Error:', err);
         res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @route   POST /api/students/register
+// @desc    Register a new student
+// @access  Public
+router.post('/register', upload.single('profilePicture'), async (req, res) => {
+    try {
+        const { 
+            firstName, lastName, email, phone, gender, dob, address, city, district, collegeName,
+            batchId, password
+        } = req.body;
+        
+        const name = `${firstName} ${lastName}`.trim();
+
+        // Check if student exists
+        let student = await Student.findOne({ email });
+        if (student) {
+            return res.status(400).json({ success: false, message: 'Student with this email already exists' });
+        }
+
+        let profilePictureUrl = "";
+        if (req.file) {
+            try {
+                const result = await uploadToCloudinary(req.file.path, 'student_profiles');
+                profilePictureUrl = result.secure_url;
+            } catch (uploadErr) {
+                console.error("Cloudinary Upload Error during Register:", uploadErr);
+            }
+        }
+
+        // Hash Password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        // Calculate 10 days from now for trial
+        const trialEndsAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+
+        let courseName = "";
+        let courseCategory = "";
+        let courseIdValue = null;
+
+        // If batch is selected, fetch batch details to get course info
+        if (batchId) {
+            const batch = await Batch.findById(batchId).populate('courseId');
+            if (batch && batch.courseId) {
+                courseIdValue = batch.courseId._id;
+                courseName = batch.courseId.title;
+                courseCategory = batch.courseId.category;
+            }
+        }
+
+        // Create Student
+        student = new Student({
+            name,
+            email,
+            phone,
+            gender,
+            dob,
+            address,
+            city,
+            district,
+            collegeName,
+            courseName,
+            courseCategory,
+            passwordHash,
+            profilePicture: profilePictureUrl,
+            status: 'Active',
+            trialEndsAt,
+            isSubscribed: false
+        });
+
+        await student.save();
+
+        // Assign to Batch
+        if (batchId && courseIdValue) {
+            const batchStudent = new BatchStudent({
+                batchId,
+                courseId: courseIdValue,
+                studentId: student._id,
+                joinedAt: new Date()
+            });
+            await batchStudent.save();
+        }
+
+        // Generate Token
+        const token = jwt.sign({ id: student._id }, process.env.JWT_SECRET, {
+            expiresIn: '30d'
+        });
+        
+        res.status(201).json({
+            success: true,
+            token,
+            user: {
+                _id: student._id,
+                name: student.name,
+                email: student.email,
+                access: student.access,
+                courseName: student.courseName,
+                status: student.status,
+                trialEndsAt: student.trialEndsAt,
+                isSubscribed: student.isSubscribed,
+                activePlan: student.activePlan,
+                planTier: student.planTier,
+                subscriptionStartedAt: student.subscriptionStartedAt,
+                subscriptionExpiresAt: student.subscriptionExpiresAt
+            }
+        });
+
+    } catch (err) {
+        console.error('Register Error:', err);
+        res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
 
@@ -302,6 +440,57 @@ router.get('/leaderboard', getLeaderboard);
 // @desc    Get mock interview leaderboard (Batch-based)
 // @access  Public
 router.get('/leaderboard/interviews', getInterviewLeaderboard);
+
+// @route   GET /api/students/subscribers
+// @desc    Get all students with active or expired subscriptions
+// @access  Admin
+router.get('/subscribers', async (req, res) => {
+    try {
+        const students = await Student.find({ 
+            $or: [
+                { isSubscribed: true },
+                { planTier: { $ne: 'None' } }
+            ]
+        })
+        .select('name email phone activePlan planTier subscriptionStartedAt subscriptionExpiresAt isSubscribed status')
+        .populate('activePlan', 'title type duration price accessLevel')
+        .sort({ subscriptionExpiresAt: -1 })
+        .lean();
+
+        res.json(students);
+    } catch (err) {
+        console.error('Error fetching subscribers:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @route   PUT /api/students/update-subscription/:id
+// @desc    Manually update student subscription
+// @access  Admin
+router.put('/update-subscription/:id', async (req, res) => {
+    try {
+        const { planId, tier, expiresAt, isSubscribed } = req.body;
+        const student = await Student.findById(req.params.id);
+        if (!student) return res.status(404).json({ message: 'Student not found' });
+
+        if (planId !== undefined) student.activePlan = planId || null;
+        if (tier !== undefined) student.planTier = tier;
+        if (expiresAt !== undefined) student.subscriptionExpiresAt = expiresAt;
+        if (isSubscribed !== undefined) student.isSubscribed = isSubscribed;
+
+        if (isSubscribed && !student.subscriptionStartedAt) {
+            student.subscriptionStartedAt = new Date();
+        }
+
+        student.updatedAt = Date.now();
+        await student.save();
+
+        res.json({ success: true, message: 'Subscription updated successfully', student });
+    } catch (err) {
+        console.error('Error updating subscription:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
 
 // @route   GET /api/students/list
 // @desc    Get all students

@@ -56,6 +56,11 @@ const studyMaterialSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    requiredTier: { 
+        type: String, 
+        enum: ['Basic', 'Intermediate', 'Full'], 
+        default: 'Basic' 
+    },
     uploadedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

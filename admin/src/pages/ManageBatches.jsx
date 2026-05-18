@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 
 const EMPTY_FORM = {
     name: '',
-    courseId: '',
+    courses: [],
     startDate: '',
     endDate: '',
     maxStudents: 30,
@@ -62,7 +62,7 @@ const ManageBatches = () => {
         setEditingBatch(batch);
         setForm({
             name: batch.name,
-            courseId: batch.courseId?._id || batch.courseId,
+            courses: batch.courses ? batch.courses.map(c => c._id || c) : [],
             startDate: batch.startDate?.split('T')[0] || '',
             endDate: batch.endDate?.split('T')[0] || '',
             maxStudents: batch.maxStudents,
@@ -181,8 +181,8 @@ const ManageBatches = () => {
                             <div className="flex justify-between items-start mb-3">
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-gray-800 text-lg truncate">{batch.name}</h3>
-                                    <p className="text-sm text-indigo-600 font-medium mt-0.5 truncate">
-                                        {batch.courseId?.title || '—'}
+                                    <p className="text-sm text-indigo-600 font-medium mt-0.5 truncate" title={batch.courses?.map(c => c.title).join(', ')}>
+                                        {batch.courses?.map(c => c.title).join(', ') || '—'}
                                     </p>
                                 </div>
                                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ml-2 shrink-0 ${statusColor(batch.status)}`}>
@@ -263,20 +263,26 @@ const ManageBatches = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Course *</label>
-                                <select
-                                    value={form.courseId}
-                                    onChange={e => setForm({ ...form, courseId: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 outline-none"
-                                    required
-                                    disabled={!!editingBatch}
-                                >
-                                    <option value="">Select a course</option>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Subjects (Courses) *</label>
+                                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-3 border border-gray-300 rounded-lg bg-gray-50">
                                     {courses.map(c => (
-                                        <option key={c._id} value={c._id}>{c.title}</option>
+                                        <label key={c._id} className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-gray-200 hover:border-indigo-300 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={form.courses.includes(c._id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setForm({ ...form, courses: [...form.courses, c._id] });
+                                                    } else {
+                                                        setForm({ ...form, courses: form.courses.filter(id => id !== c._id) });
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                            />
+                                            <span className="text-sm text-gray-700 truncate">{c.title}</span>
+                                        </label>
                                     ))}
-                                </select>
-                                {editingBatch && <p className="text-xs text-gray-400 mt-1">Course cannot be changed after creation</p>}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

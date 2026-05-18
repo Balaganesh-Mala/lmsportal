@@ -24,6 +24,44 @@ exports.getStudentDashboardStats = async (req, res) => {
             return res.status(404).json({ message: 'Student not found' });
         }
 
+        // ─── 1.5. Daily Streak Calculation (Timezone & Calendar Proof) ───────────
+        const today = new Date();
+        let streakUpdated = false;
+
+        if (!student.lastActiveDate) {
+            student.currentStreak = 1;
+            student.highestStreak = 1;
+            student.lastActiveDate = today;
+            streakUpdated = true;
+        } else {
+            const lastActive = new Date(student.lastActiveDate);
+            
+            // Calculate absolute difference in calendar days (UTC-normalized dates)
+            const d1 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+            const d2 = Date.UTC(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
+            const diffDays = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                // Consecutive day: Increase streak!
+                student.currentStreak = (student.currentStreak || 0) + 1;
+                if (student.currentStreak > (student.highestStreak || 0)) {
+                    student.highestStreak = student.currentStreak;
+                }
+                student.lastActiveDate = today;
+                streakUpdated = true;
+            } else if (diffDays > 1) {
+                // Missed a day: Reset streak to 1
+                student.currentStreak = 1;
+                student.lastActiveDate = today;
+                streakUpdated = true;
+            }
+            // If diffDays === 0, it means same calendar day - keep streak!
+        }
+        
+        if (streakUpdated) {
+            await student.save();
+        }
+
         // ─── 2. Enrolled Courses Count ───────────────────────────────────────────
         // Count unique courseIds across all Progress records (reliable — no string matching)
         const distinctCourseIds = await Progress.distinct('courseId', { studentId });
@@ -63,38 +101,39 @@ exports.getStudentDashboardStats = async (req, res) => {
         }));
 
         // ─── 6. Batch Progress (% of topics completed) ───────────────────────────
-        // Use BatchStudent for reliable courseId lookup instead of courseName regex.
+        // Use BatchStudent for reliable course lookup instead of courseName regex.
         let batchProgress = 0;
         try {
             // Try BatchStudent first (reliable)
             // 1. Get Enrollments (Prioritize primary batch)
-        const enrollments = await BatchStudent.find({ studentId }).populate('courseId');
-        
-        // Find primary enrollment (where isBonus is false), fallback to first enrollment if none marked as non-bonus
-        const batchStudent = enrollments.find(e => !e.isBonus) || enrollments[0];
-        
-        let courseId = batchStudent?.courseId?._id;
+            const enrollments = await BatchStudent.find({ studentId }).populate('batchId');
+            
+            // Find primary enrollment (where isBonus is false), fallback to first enrollment if none marked as non-bonus
+            const batchStudent = enrollments.find(e => !e.isBonus) || enrollments[0];
+            
+            let courseIdsToTrack = [];
 
-            // Fallback: use Progress distinct courseIds if batch not found
-            if (!courseId && distinctCourseIds.length > 0) {
-                courseId = distinctCourseIds[0];
-            }
-
-            // Last resort fallback: courseName string match
-            if (!courseId && student.courseName) {
+            // If we have a batch with courses, track all courses in that batch
+            if (batchStudent && batchStudent.batchId && batchStudent.batchId.courses) {
+                courseIdsToTrack = batchStudent.batchId.courses;
+            } else if (distinctCourseIds.length > 0) {
+                // Fallback: use Progress distinct courseIds
+                courseIdsToTrack = distinctCourseIds;
+            } else if (student.courseName) {
+                // Last resort fallback: courseName string match
                 const course = await Course.findOne({
                     title: { $regex: new RegExp(student.courseName, 'i') }
                 });
-                courseId = course?._id;
+                if (course) courseIdsToTrack.push(course._id);
             }
 
-            if (courseId) {
-                const modules = await Module.find({ courseId }).select('_id');
+            if (courseIdsToTrack.length > 0) {
+                const modules = await Module.find({ courseId: { $in: courseIdsToTrack } }).select('_id');
                 const moduleIds = modules.map(m => m._id);
                 const totalTopics = await Topic.countDocuments({ moduleId: { $in: moduleIds } });
                 const completedTopics = await Progress.countDocuments({
                     studentId,
-                    courseId,
+                    courseId: { $in: courseIdsToTrack },
                     completed: true
                 });
                 if (totalTopics > 0) {
@@ -109,7 +148,7 @@ exports.getStudentDashboardStats = async (req, res) => {
         const now = new Date();
         const startOfWeek = new Date(now);
         const day = now.getDay();
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+        const diff = now.getDate() - day; // Adjust to Sunday (start of the week)
         startOfWeek.setDate(diff);
         startOfWeek.setHours(0, 0, 0, 0);
 
@@ -176,7 +215,7 @@ exports.getStudentDashboardStats = async (req, res) => {
             (d) => (d.coinsEarned || 0) + (d.bonusCoins || 0) + (d.firstInterviewCoinsBonus || 0)
         ));
 
-        const weeklyActivity = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(name => ({
+        const weeklyActivity = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(name => ({
             name,
             points: activityMap[name].points,
             coins: activityMap[name].coins
@@ -230,7 +269,9 @@ exports.getStudentDashboardStats = async (req, res) => {
                 points: student.points || 0,
                 dailyPoints: dailyPoints,
                 dailyGoal: 100,
-                certificates: 0
+                certificates: 0,
+                currentStreak: student.currentStreak || 0,
+                highestStreak: student.highestStreak || 0
             },
             recentActivity,
             weeklyActivity
@@ -260,14 +301,39 @@ exports.getLeaderboard = async (req, res) => {
         }
 
         // 2. Determine Timeframe
+        if (period === 'all_time') {
+            const filter = { 
+                'preferences.showOnLeaderboard': { $ne: false }, 
+                ...(studentIdsInBatch ? { _id: { $in: studentIdsInBatch } } : {})
+            };
+            
+            const leaderboard = await Student.find(filter)
+                .sort({ points: -1 })
+                .limit(100)
+                .select('name email profilePicture points')
+                .lean();
+
+            const formattedLeaderboard = leaderboard.map((entry, index) => ({
+                rank: index + 1,
+                id: entry._id,
+                name: entry.name,
+                email: entry.email,
+                profilePicture: entry.profilePicture,
+                points: entry.points || 0
+            }));
+            
+            return res.json({ success: true, period, leaderboard: formattedLeaderboard });
+        }
+
         const now = new Date();
         const startOfPeriod = new Date(now);
         if (period === 'daily') {
             startOfPeriod.setHours(0, 0, 0, 0);
         } else {
-            // Weekly: Start from Monday
-            const diffToMon = (now.getDay() + 6) % 7;
-            startOfPeriod.setDate(now.getDate() - diffToMon);
+            // Weekly: Start from Sunday
+            const day = now.getDay();
+            const diff = now.getDate() - day;
+            startOfPeriod.setDate(diff);
             startOfPeriod.setHours(0, 0, 0, 0);
         }
 
@@ -364,7 +430,7 @@ exports.getLeaderboard = async (req, res) => {
             { $unwind: "$combined" },
             { $group: { _id: "$combined._id", totalPoints: { $sum: "$combined.count" } } },
             { $sort: { totalPoints: -1 } },
-            { $limit: 20 }, // Get top 20 to be safe
+            { $limit: 100 }, // Get top 100 to be safe
             {
                 $lookup: {
                     from: 'students',
@@ -416,9 +482,10 @@ exports.getStudentActivity = async (req, res) => {
 
         // ── Determine date range boundaries ──────────────────────────────────────
         if (range === 'week') {
-            const diffToMon = (now.getDay() + 6) % 7;
+            const day = now.getDay();
+            const diff = now.getDate() - day;
             startDate = new Date(now);
-            startDate.setDate(now.getDate() - diffToMon);
+            startDate.setDate(diff);
             startDate.setHours(0, 0, 0, 0);
         } else if (range === 'month') {
             startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
@@ -495,7 +562,7 @@ exports.getStudentActivity = async (req, res) => {
         };
 
         if (range === 'week') {
-            bucketKeys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            bucketKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         } else if (range === 'month') {
             const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
             bucketKeys = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-    X, 
-    Printer, 
-    IndianRupee, 
-    Building2, 
-    MapPin, 
-    Phone, 
-    Mail, 
-    Download, 
-    CheckCircle2, 
-    ShieldCheck, 
+import toast from 'react-hot-toast';
+import {
+    X,
+    Printer,
+    IndianRupee,
+    Building2,
+    MapPin,
+    Phone,
+    Mail,
+    Download,
+    CheckCircle2,
+    ShieldCheck,
     Loader,
     Globe
 } from 'lucide-react';
@@ -20,8 +21,9 @@ import sigImg from '../assets/sig.jpeg';
 export default function ReceiptModal({ isOpen, onClose, installment }) {
     const [settings, setSettings] = useState(null);
     const [payment, setPayment] = useState(null);
-    const [feeSummary, setFeeSummary] = useState({ total: 0, pending: 0, previousPaid: 0 });
+    const [feeSummary, setFeeSummary] = useState({ total: 0, pending: 0, previousPaid: 0, isSubscription: false });
     const [loading, setLoading] = useState(true);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -38,13 +40,22 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                 ]);
 
                 const allInst = installmentsRes.data;
-                const totalPaidAtTime = allInst
+                const isSubscription = installment.installment_no === 99;
+                const courseInstallments = allInst.filter(i => i.installment_no !== 99);
+
+                const totalPaidAtTime = courseInstallments
                     .filter(i => (i.status === 'Paid' || i._id === installment._id) && i.installment_no <= installment.installment_no)
                     .reduce((sum, i) => sum + i.amount, 0);
-                const totalFee = allInst.reduce((sum, i) => sum + i.amount, 0);
-                const previousPaid = totalPaidAtTime - installment.amount;
 
-                setFeeSummary({ total: totalFee, pending: totalFee - totalPaidAtTime, previousPaid });
+                const totalFee = courseInstallments.reduce((sum, i) => sum + i.amount, 0);
+                const previousPaid = isSubscription ? 0 : totalPaidAtTime - installment.amount;
+
+                setFeeSummary({
+                    total: totalFee,
+                    pending: totalFee - (isSubscription ? 0 : totalPaidAtTime),
+                    previousPaid,
+                    isSubscription
+                });
 
                 setSettings(settingsRes.data);
                 if (paymentRes.data) setPayment(paymentRes.data);
@@ -68,6 +79,37 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
         document.title = `Receipt_#REC-${receiptId}`;
         window.print();
         document.title = originalTitle;
+    };
+
+    const handleDownloadPDF = async () => {
+        if (downloading) return;
+        try {
+            setDownloading(true);
+            const loadingToast = toast.loading("Generating professional receipt PDF...");
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+            const response = await axios.get(`${apiUrl}/api/finance/installments/${installment._id}/receipt-pdf`, {
+                responseType: 'blob'
+            });
+
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const receiptId = installment._id.substring(18).toUpperCase();
+            link.setAttribute('download', `Official_Receipt_${receiptId}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast.success("Receipt downloaded successfully!", { id: loadingToast });
+        } catch (error) {
+            console.error("PDF Download Error:", error);
+            toast.error("Failed to download PDF receipt");
+        } finally {
+            setDownloading(false);
+        }
     };
 
     const student = installment.student_id;
@@ -100,17 +142,17 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                 {/* Receipt Content */}
                 <div className="overflow-y-auto flex-1 bg-slate-50/30 print:bg-white p-0 md:p-8" id="receipt-content">
                     {loading ? (
-                         <div className="flex flex-col items-center justify-center py-48 bg-white rounded-xl">
-                             <Loader className="w-10 h-10 animate-spin text-slate-200" />
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-6">Generating secure copy...</p>
-                         </div>
+                        <div className="flex flex-col items-center justify-center py-48 bg-white rounded-xl">
+                            <Loader className="w-10 h-10 animate-spin text-slate-200" />
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-6">Generating secure copy...</p>
+                        </div>
                     ) : (
                         <div className="bg-white mx-auto shadow-sm print:shadow-none border border-slate-100 print:border-none relative">
-                            
+
                             {/* Watermark Section */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.015] select-none print:opacity-[0.02] z-0 overflow-hidden">
                                 <h1 className="text-[3.2rem] md:text-[3.5rem] font-black -rotate-12 uppercase tracking-[0.2em] text-center whitespace-nowrap">
-                                    FINWISE CAREER SOLUTIONS
+                                    {settings?.siteTitle || 'LMS PORTAL'}
                                 </h1>
                             </div>
 
@@ -122,9 +164,9 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                                     </div>
                                     <div>
                                         <h1 className="text-xl font-bold tracking-tight uppercase text-gray-900">
-                                            Finwise Career Solutions
+                                            {settings?.siteTitle || 'LMS Portal'}
                                         </h1>
-                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">Academic Excellence • Career Success</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">Academic Excellence • Smart Learning</p>
                                     </div>
                                 </div>
 
@@ -139,8 +181,7 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
 
                             {/* Main Body - Table Format for Info */}
                             <div className="px-8 py-6 md:px-12 md:py-8 relative z-10">
-                                
-                                {/* Unified Info Table */}
+
                                 {/* Unified Info Sections */}
                                 <div className="mb-6 grid grid-cols-1 md:grid-cols-2 border-b border-gray-100">
                                     <div className="py-6 align-top pr-0 md:pr-8 border-b md:border-b-0 md:border-r border-gray-100">
@@ -169,24 +210,32 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                                             )}
 
                                             {/* Fee Summary Stats */}
-                                            <div className="flex justify-between text-[11px] pt-3 border-t-2 border-slate-100">
-                                                <span className="text-slate-400 font-bold uppercase tracking-wide">Total Course Fee:</span>
-                                                <span className="font-bold text-slate-800">₹{feeSummary.total.toLocaleString('en-IN')}</span>
-                                            </div>
-                                            {feeSummary.previousPaid > 0 && (
-                                                <div className="flex justify-between text-[11px]">
-                                                    <span className="text-slate-400 font-bold uppercase tracking-wide">Amount Previously Paid:</span>
-                                                    <span className="font-bold text-slate-600">₹{feeSummary.previousPaid.toLocaleString('en-IN')}</span>
+                                            {!feeSummary.isSubscription ? (
+                                                <>
+                                                    <div className="flex justify-between text-[11px] pt-3 border-t-2 border-slate-100">
+                                                        <span className="text-slate-400 font-bold uppercase tracking-wide">Total Course Fee:</span>
+                                                        <span className="font-bold text-slate-800">₹{feeSummary.total.toLocaleString('en-IN')}</span>
+                                                    </div>
+                                                    {feeSummary.previousPaid > 0 && (
+                                                        <div className="flex justify-between text-[11px]">
+                                                            <span className="text-slate-400 font-bold uppercase tracking-wide">Amount Previously Paid:</span>
+                                                            <span className="font-bold text-slate-600">₹{feeSummary.previousPaid.toLocaleString('en-IN')}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex justify-between text-[11px] pb-1 border-b border-slate-100">
+                                                        <span className="text-slate-400 font-bold uppercase tracking-wide">This Installment:</span>
+                                                        <span className="font-bold text-indigo-600">₹{installment.amount.toLocaleString('en-IN')}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[11px] pt-1">
+                                                        <span className="text-slate-400 font-bold uppercase tracking-wide">Remaining Balance:</span>
+                                                        <span className="font-bold text-rose-500">₹{feeSummary.pending.toLocaleString('en-IN')}</span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="pt-3 border-t-2 border-slate-100">
+                                                    <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest bg-orange-50 p-2 rounded-lg text-center">Premium Subscription Activated</p>
                                                 </div>
                                             )}
-                                            <div className="flex justify-between text-[11px] pb-1 border-b border-slate-100">
-                                                <span className="text-slate-400 font-bold uppercase tracking-wide">This Installment:</span>
-                                                <span className="font-bold text-indigo-600">₹{installment.amount.toLocaleString('en-IN')}</span>
-                                            </div>
-                                            <div className="flex justify-between text-[11px] pt-1">
-                                                <span className="text-slate-400 font-bold uppercase tracking-wide">Remaining Balance:</span>
-                                                <span className="font-bold text-rose-500">₹{feeSummary.pending.toLocaleString('en-IN')}</span>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -204,11 +253,19 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                                             <tr>
                                                 <td className="px-6 py-8">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="text-xs font-bold text-gray-300">#{installment_no}</div>
+                                                        <div className="text-xs font-bold text-gray-300">
+                                                            {feeSummary.isSubscription ? 'SUB' : `#${installment_no}`}
+                                                        </div>
                                                         <div>
-                                                            <p className="text-sm font-bold text-gray-800 uppercase">Training Fee Installment</p>
-                                                            <p className="text-[9px] text-indigo-600 mt-1 font-bold uppercase tracking-wider">{student?.courseName || 'Career Training Program'}</p>
-                                                            <p className="text-[9px] text-gray-400 mt-0.5 font-medium italic">Standard payment towards selected career coaching program.</p>
+                                                            <p className="text-sm font-bold text-gray-800 uppercase">
+                                                                {feeSummary.isSubscription ? 'Smart Learning Premium Plan Subscription' : 'Tuition Fee Installment'}
+                                                            </p>
+                                                            <p className="text-[9px] text-indigo-600 mt-1 font-bold uppercase tracking-wider">
+                                                                {feeSummary.isSubscription ? 'All Grade Subjects & Learning Portal Access' : 'Grade Syllabus Course Program'}
+                                                            </p>
+                                                            <p className="text-[9px] text-gray-400 mt-0.5 font-medium italic">
+                                                                {feeSummary.isSubscription ? 'Access enabled for interactive digital worksheets, quizzes, progress reports and parent updates.' : 'Standard fee installment paid towards the class grade and associated subjects.'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -234,23 +291,25 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                                     </table>
                                 </div>
 
-                                {/* Simplified Footer Block */}
+                                {/* Terms & Conditions / Footer Block */}
                                 <div className="flex flex-col md:flex-row items-start justify-between gap-12 pt-6 border-t border-gray-100">
-                                    <div className="max-w-xs">
-                                        <p className="text-[9px] font-bold text-gray-400 uppercase leading-relaxed tracking-wider">
-                                            * Fees are non-refundable.<br />
-                                            * Official digital record of Finwise Career Solutions.<br />
-                                            * Verify at finwisecareers.com
-                                        </p>
+                                    <div className="max-w-md">
+                                        <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 text-left">Terms & Conditions</h4>
+                                        <ul className="text-[9px] text-gray-400 font-medium space-y-1.5 list-disc pl-4 leading-relaxed text-left">
+                                            <li>All tuition and subscription fee payments are strictly non-refundable.</li>
+                                            <li>Service access is subject to timely payment of academic fee installments.</li>
+                                            <li>This is a secure digital record and does not require a physical signature.</li>
+                                            <li>For support or billing inquiries, contact us at: <span className="font-semibold text-gray-600 lowercase">{settings?.contact?.email || 'School Support'}</span></li>
+                                        </ul>
                                     </div>
 
                                     <div className="text-center min-w-[180px]">
                                         <div className="h-16 flex items-center justify-center relative mb-2">
                                             {sigImg && (
-                                                <img 
-                                                    src={sigImg} 
-                                                    alt="Signature" 
-                                                    className="max-h-12 w-auto object-contain mix-blend-multiply opacity-80" 
+                                                <img
+                                                    src={sigImg}
+                                                    alt="Signature"
+                                                    className="max-h-12 w-auto object-contain mix-blend-multiply opacity-80"
                                                 />
                                             )}
                                         </div>
@@ -284,10 +343,11 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                         </button>
                         <button
                             type="button"
-                            onClick={handlePrint}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 text-[10px] font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all uppercase tracking-widest"
+                            onClick={handleDownloadPDF}
+                            disabled={downloading}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 text-[10px] font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all uppercase tracking-widest disabled:opacity-50"
                         >
-                            <Download size={14} /> Download PDF
+                            {downloading ? <Loader size={14} className="animate-spin" /> : <Download size={14} />} Download PDF
                         </button>
                     </div>
                 </div>
