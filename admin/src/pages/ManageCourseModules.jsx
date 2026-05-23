@@ -58,19 +58,25 @@ const ManageCourseModules = () => {
     // Test bank for MCQ
     const [testBank, setTestBank] = useState([]);
     const [selectedTestId, setSelectedTestId] = useState('');
+    const [selectedQuizTier, setSelectedQuizTier] = useState('Basic');
     const [savingMcq, setSavingMcq] = useState(false);
     // New task form
     const [newTask, setNewTask] = useState({ title: '', description: '' });
     const [newTaskFile, setNewTaskFile] = useState(null);
     const [isTaskUrlMode, setIsTaskUrlMode] = useState(false);
     const [newTaskUrl, setNewTaskUrl] = useState('');
+    const [newTaskTier, setNewTaskTier] = useState('Basic');
     const [savingTask, setSavingTask] = useState(false);
     // New assignment form
     const [newAssignment, setNewAssignment] = useState({ title: '' });
     const [newAssignFile, setNewAssignFile] = useState(null);
     const [isAssignUrlMode, setIsAssignUrlMode] = useState(false);
     const [newAssignUrl, setNewAssignUrl] = useState('');
+    const [newAssignTier, setNewAssignTier] = useState('Basic');
     const [savingAssign, setSavingAssign] = useState(false);
+    
+    // Note tier state for Google Doc/PPT attachment
+    const [newNoteTier, setNewNoteTier] = useState('Basic');
 
     useEffect(() => {
         fetchCourseDetails();
@@ -116,8 +122,13 @@ const ManageCourseModules = () => {
         if (!selectedTestId) { toast.error('Please select a test'); return; }
         setSavingMcq(true);
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/mcqs`, { testId: selectedTestId });
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/mcq-tests`, { 
+                testId: selectedTestId,
+                requiredTier: selectedQuizTier
+            });
             setTopicContent(res.data.content);
+            setSelectedTestId('');
+            setSelectedQuizTier('Basic');
             toast.success('Quiz linked!');
         } catch (e) { toast.error('Failed to link quiz'); }
         finally { setSavingMcq(false); }
@@ -132,6 +143,15 @@ const ManageCourseModules = () => {
         } catch (e) { toast.error('Failed to remove quiz'); }
         finally { setSavingMcq(false); }
     };
+    const handleRemoveMcqTest = async (testIndex) => {
+        setSavingMcq(true);
+        try {
+            const res = await axios.delete(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/mcq-tests/${testIndex}`);
+            setTopicContent(res.data.content);
+            toast.success('Quiz removed');
+        } catch (e) { toast.error('Failed to remove quiz'); }
+        finally { setSavingMcq(false); }
+    };
 
     // ─── Add Task ───
     const handleAddTask = async () => {
@@ -140,15 +160,17 @@ const ManageCourseModules = () => {
         const formData = new FormData();
         formData.append('title', newTask.title);
         formData.append('description', newTask.description);
+        formData.append('requiredTier', newTaskTier);
         if (newTaskFile) formData.append('file', newTaskFile);
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/task`, isTaskUrlMode ? { title: newTask.title, description: newTask.description, fileUrl: newTaskUrl } : formData, {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/task`, isTaskUrlMode ? { title: newTask.title, description: newTask.description, fileUrl: newTaskUrl, requiredTier: newTaskTier } : formData, {
                 headers: { 'Content-Type': isTaskUrlMode ? 'application/json' : 'multipart/form-data' }
             });
             setTopicContent(res.data.content);
             setNewTask({ title: '', description: '' });
             setNewTaskFile(null);
             setNewTaskUrl('');
+            setNewTaskTier('Basic');
             setIsTaskUrlMode(false);
             toast.success('Task added!');
         } catch (e) { toast.error('Failed to add task'); }
@@ -168,27 +190,29 @@ const ManageCourseModules = () => {
         setSavingAssign(true);
         const formData = new FormData();
         formData.append('title', newAssignment.title);
+        formData.append('requiredTier', newAssignTier);
         // The backend `topicContentRoutes.js` expects the field name to be 'questionFile'
         if (newAssignFile) formData.append('questionFile', newAssignFile);
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/assignment`, isAssignUrlMode ? { title: newAssignment.title, questionUrl: newAssignUrl } : formData, {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/assignment`, isAssignUrlMode ? { title: newAssignment.title, questionUrl: newAssignUrl, requiredTier: newAssignTier } : formData, {
                 headers: { 'Content-Type': isAssignUrlMode ? 'application/json' : 'multipart/form-data' }
             });
             setTopicContent(res.data.content);
             setNewAssignment({ title: '' });
             setNewAssignFile(null);
             setNewAssignUrl('');
+            setNewAssignTier('Basic');
             setIsAssignUrlMode(false);
-            toast.success('Assignment added!');
-        } catch (e) { toast.error('Failed to add assignment'); }
+            toast.success('Document added!');
+        } catch (e) { toast.error('Failed to add document'); }
         finally { setSavingAssign(false); }
     };
     const handleDeleteAssignment = async (assignmentIndex) => {
         try {
             const res = await axios.delete(`${import.meta.env.VITE_API_URL}/api/topic-content/${contentModalTopic._id}/assignment/${assignmentIndex}`);
             setTopicContent(res.data.content);
-            toast.success('Assignment removed');
-        } catch (e) { toast.error('Failed to remove assignment'); }
+            toast.success('Document removed');
+        } catch (e) { toast.error('Failed to remove document'); }
     };
 
     const fetchCourseDetails = async () => {
@@ -890,24 +914,37 @@ const ManageCourseModules = () => {
                                         type="text"
                                         placeholder="Note Name (e.g. Audit PPT)"
                                         id="extNoteName"
-                                        className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:border-indigo-500 outline-none bg-white"
+                                        className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:border-indigo-500 outline-none bg-white font-medium"
                                     />
                                     <input
                                         type="url"
                                         placeholder="Google Doc/PPT URL"
                                         id="extNoteUrl"
-                                        className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:border-indigo-500 outline-none bg-white"
+                                        className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:border-indigo-500 outline-none bg-white font-medium"
                                     />
                                 </div>
                                 <div className="flex gap-4 items-center">
-                                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                                    <label className="flex items-center gap-2 text-sm text-gray-700 font-medium">
                                         <input type="radio" name="extNoteType" value="google_doc" defaultChecked className="text-indigo-600" />
                                         Google Doc
                                     </label>
-                                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                                    <label className="flex items-center gap-2 text-sm text-gray-700 font-medium">
                                         <input type="radio" name="extNoteType" value="google_ppt" className="text-indigo-600" />
                                         Google PPT
                                     </label>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-semibold text-slate-600">Access Tier</label>
+                                    <select
+                                        value={newNoteTier}
+                                        onChange={e => setNewNoteTier(e.target.value)}
+                                        className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:border-indigo-500 outline-none bg-white font-bold text-indigo-700"
+                                    >
+                                        <option value="Basic">Basic (Premium Plan)</option>
+                                        <option value="Premium">Premium Only</option>
+                                        <option value="Gold">Gold Only</option>
+                                        <option value="Platinum">Platinum Only</option>
+                                    </select>
                                 </div>
                                 <button
                                     type="button"
@@ -916,9 +953,10 @@ const ManageCourseModules = () => {
                                         const url = document.getElementById('extNoteUrl').value;
                                         const type = document.querySelector('input[name="extNoteType"]:checked')?.value || 'google_doc';
                                         if (!name || !url) return toast.error('Please provide name and URL');
-                                        setTopicForm(p => ({ ...p, externalNotes: [...(p.externalNotes || []), { name, url, type }] }));
+                                        setTopicForm(p => ({ ...p, externalNotes: [...(p.externalNotes || []), { name, url, type, requiredTier: newNoteTier }] }));
                                         document.getElementById('extNoteName').value = '';
                                         document.getElementById('extNoteUrl').value = '';
+                                        setNewNoteTier('Basic');
                                     }}
                                     className="w-full py-2 bg-white border-2 border-dashed border-indigo-200 text-indigo-600 rounded-lg font-bold text-xs hover:bg-indigo-50 hover:border-indigo-400 transition-all flex items-center justify-center gap-2"
                                 >
@@ -993,42 +1031,87 @@ const ManageCourseModules = () => {
                                     {/* ── Quiz Tab ── */}
                                     {contentTab === 'quiz' && (
                                         <div className="space-y-5">
-                                            <p className="text-sm text-gray-600">Link a test from your test bank as the MCQ quiz for this topic. Students get one attempt.</p>
+                                            <p className="text-sm text-gray-600">Link tests from your test bank as the MCQ quizzes for this topic. Students get one attempt per quiz.</p>
 
-                                            {/* Current quiz */}
+                                            {/* Legacy single quiz if still present */}
                                             {topicContent?.mcqTest?.enabled && topicContent?.mcqTest?.testId && (
                                                 <div className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-xl">
                                                     <div className="flex items-center gap-3">
-                                                        <BookOpen size={18} className="text-purple-600" />
+                                                        <BookOpen size={18} className="text-purple-600 font-bold" />
                                                         <div>
-                                                            <p className="text-sm font-semibold text-purple-800">
-                                                                {topicContent.mcqTest.testId?.title || 'Linked Test'}
+                                                            <p className="text-sm font-bold text-purple-800">
+                                                                {topicContent.mcqTest.testId?.title || 'Linked Test'} (Legacy)
                                                             </p>
-                                                            <p className="text-xs text-purple-600">Currently linked</p>
+                                                            <p className="text-[10px] text-purple-600 uppercase font-black tracking-widest mt-0.5">Required Tier: Basic</p>
                                                         </div>
                                                     </div>
                                                     <button onClick={handleRemoveMcq} disabled={savingMcq}
-                                                        className="text-red-500 hover:text-red-700 text-xs font-medium flex items-center gap-1 disabled:opacity-50">
+                                                        className="text-red-500 hover:text-red-700 text-xs font-semibold flex items-center gap-1 disabled:opacity-50">
                                                         <Trash2 size={14} /> Remove
                                                     </button>
                                                 </div>
                                             )}
 
-                                            <div className="space-y-3">
-                                                <label className="block text-sm font-medium text-gray-700">Select Test from Bank</label>
-                                                <select
-                                                    value={selectedTestId}
-                                                    onChange={e => setSelectedTestId(e.target.value)}
-                                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 outline-none text-sm"
-                                                >
-                                                    <option value="">-- Choose a test --</option>
-                                                    {testBank.filter(t => t.type === 'mcq').map(t => (
-                                                        <option key={t._id} value={t._id}>{t.title} ({t.questions?.length || 0} questions)</option>
+                                            {/* Current multiple quizzes */}
+                                            {topicContent?.mcqTests?.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Linked Quizzes</p>
+                                                    {topicContent.mcqTests.map((quiz, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl">
+                                                            <div className="flex items-center gap-3">
+                                                                <BookOpen size={18} className="text-indigo-600" />
+                                                                <div>
+                                                                    <p className="text-sm font-semibold text-indigo-900">
+                                                                        {quiz.testId?.title || 'Linked Quiz'}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-widest">
+                                                                        Required Tier: <span className="text-pink-600 font-black">{quiz.requiredTier || 'Basic'}</span>
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <button onClick={() => handleRemoveMcqTest(idx)} disabled={savingMcq}
+                                                                className="text-red-500 hover:text-red-700 text-xs font-medium flex items-center gap-1 disabled:opacity-50">
+                                                                <Trash2 size={14} /> Remove
+                                                            </button>
+                                                        </div>
                                                     ))}
-                                                </select>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                                <p className="text-xs font-black text-slate-800 uppercase tracking-wide">Link New Quiz</p>
+                                                
+                                                <div className="space-y-1">
+                                                    <label className="block text-xs font-bold text-gray-500">Select Quiz</label>
+                                                    <select
+                                                        value={selectedTestId}
+                                                        onChange={e => setSelectedTestId(e.target.value)}
+                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-indigo-500 outline-none text-sm bg-white font-medium text-slate-800"
+                                                    >
+                                                        <option value="">-- Choose a test --</option>
+                                                        {testBank.filter(t => t.type === 'mcq').map(t => (
+                                                            <option key={t._id} value={t._id}>{t.title} ({t.questions?.length || 0} questions)</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                
+                                                <div className="space-y-1">
+                                                    <label className="block text-xs font-bold text-gray-500">Access Tier</label>
+                                                    <select
+                                                        value={selectedQuizTier}
+                                                        onChange={e => setSelectedQuizTier(e.target.value)}
+                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-indigo-500 outline-none text-sm bg-white font-bold text-indigo-700"
+                                                    >
+                                                        <option value="Basic">Basic (Premium Plan)</option>
+                                                        <option value="Premium">Premium Only</option>
+                                                        <option value="Gold">Gold Only</option>
+                                                        <option value="Platinum">Platinum Only</option>
+                                                    </select>
+                                                </div>
+
                                                 <button onClick={handleSaveMcq} disabled={savingMcq || !selectedTestId}
-                                                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                                                    {savingMcq ? 'Saving...' : <><Save size={15} /> Link Quiz</>}
+                                                    className="w-full mt-2 py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
+                                                    {savingMcq ? 'Saving...' : <><Plus size={15} /> Link Quiz</>}
                                                 </button>
                                             </div>
                                         </div>
@@ -1042,11 +1125,16 @@ const ManageCourseModules = () => {
                                                 <div className="space-y-2">
                                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Existing Tasks</p>
                                                     {topicContent.tasks.map((task, idx) => (
-                                                        <div key={idx} className="flex items-start justify-between p-3 border border-gray-200 rounded-lg">
+                                                        <div key={idx} className="flex items-start justify-between p-3 border border-gray-200 rounded-lg bg-slate-50/50">
                                                             <div>
-                                                                <p className="text-sm font-medium text-gray-800">{task.title}</p>
-                                                                {task.description && <p className="text-xs text-gray-500 mt-0.5">{task.description}</p>}
-                                                                {task.fileUrl && <a href={task.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">View File</a>}
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-sm font-semibold text-gray-800">{task.title}</p>
+                                                                    <span className="text-[9px] px-2 py-0.5 font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 rounded border border-indigo-100">
+                                                                        {task.requiredTier || 'Basic'}
+                                                                    </span>
+                                                                </div>
+                                                                {task.description && <p className="text-xs text-gray-500 mt-1">{task.description}</p>}
+                                                                {task.fileUrl && <a href={task.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline mt-1 block w-fit font-medium">View Resource</a>}
                                                             </div>
                                                             <button onClick={() => handleDeleteTask(idx)} className="text-red-400 hover:text-red-600 ml-3 flex-shrink-0">
                                                                 <Trash2 size={15} />
@@ -1058,13 +1146,28 @@ const ManageCourseModules = () => {
 
                                             {/* Add new task */}
                                             <div className="space-y-3 border-t border-gray-100 pt-4">
-                                                <p className="text-sm font-semibold text-gray-700">Add New Task</p>
+                                                <p className="text-sm font-bold text-gray-700">Add New Task</p>
                                                 <input type="text" placeholder="Task title *" value={newTask.title}
                                                     onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none" />
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none font-medium" />
                                                 <textarea placeholder="Description (optional)" value={newTask.description}
                                                     onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))}
-                                                    rows="2" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none resize-none" />
+                                                    rows="2" className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none resize-none font-medium" />
+                                                
+                                                <div className="space-y-1">
+                                                    <label className="block text-xs font-bold text-gray-500">Access Tier</label>
+                                                    <select
+                                                        value={newTaskTier}
+                                                        onChange={e => setNewTaskTier(e.target.value)}
+                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white font-bold text-indigo-700 focus:border-indigo-500 outline-none"
+                                                    >
+                                                        <option value="Basic">Basic (Premium Plan)</option>
+                                                        <option value="Premium">Premium Only</option>
+                                                        <option value="Gold">Gold Only</option>
+                                                        <option value="Platinum">Platinum Only</option>
+                                                    </select>
+                                                </div>
+
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-4 mb-1">
                                                         <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
@@ -1078,10 +1181,10 @@ const ManageCourseModules = () => {
                                                     </div>
                                                     {isTaskUrlMode ? (
                                                         <input type="url" placeholder="https://..." value={newTaskUrl} onChange={e => setNewTaskUrl(e.target.value)}
-                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none" />
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none font-medium" />
                                                     ) : (
                                                         <div className="flex items-center gap-3">
-                                                            <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                                                            <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 font-medium">
                                                                 <Upload size={14} /> Resource File (optional)
                                                                 <input type="file" className="hidden" onChange={e => setNewTaskFile(e.target.files[0])} />
                                                             </label>
@@ -1090,7 +1193,7 @@ const ManageCourseModules = () => {
                                                     )}
                                                 </div>
                                                 <button onClick={handleAddTask} disabled={savingTask}
-                                                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                                                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
                                                     {savingTask ? 'Adding...' : <><Plus size={15} /> Add Task</>}
                                                 </button>
                                             </div>
@@ -1105,10 +1208,15 @@ const ManageCourseModules = () => {
                                                 <div className="space-y-2">
                                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Existing Documents</p>
                                                     {topicContent.assignments.map((assign, idx) => (
-                                                        <div key={idx} className="flex items-start justify-between p-3 border border-gray-200 rounded-lg">
+                                                        <div key={idx} className="flex items-start justify-between p-3 border border-gray-200 rounded-lg bg-slate-50/50">
                                                             <div>
-                                                                <p className="text-sm font-medium text-gray-800">{assign.title}</p>
-                                                                {assign.questionUrl && <a href={assign.questionUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline">View Document</a>}
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-sm font-semibold text-gray-800">{assign.title}</p>
+                                                                    <span className="text-[9px] px-2 py-0.5 font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 rounded border border-indigo-100">
+                                                                        {assign.requiredTier || 'Basic'}
+                                                                    </span>
+                                                                </div>
+                                                                {assign.questionUrl && <a href={assign.questionUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline mt-1 block w-fit font-medium">View Document</a>}
                                                             </div>
                                                             <button onClick={() => handleDeleteAssignment(idx)} className="text-red-400 hover:text-red-600 ml-3 flex-shrink-0">
                                                                 <Trash2 size={15} />
@@ -1120,10 +1228,25 @@ const ManageCourseModules = () => {
 
                                             {/* Add new document */}
                                             <div className="space-y-3 border-t border-gray-100 pt-4">
-                                                <p className="text-sm font-semibold text-gray-700">Add New Document</p>
+                                                <p className="text-sm font-bold text-gray-700">Add New Document</p>
                                                 <input type="text" placeholder="Document title *" value={newAssignment.title}
                                                     onChange={e => setNewAssignment(p => ({ ...p, title: e.target.value }))}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none" />
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none font-medium" />
+                                                
+                                                <div className="space-y-1">
+                                                    <label className="block text-xs font-bold text-gray-500">Access Tier</label>
+                                                    <select
+                                                        value={newAssignTier}
+                                                        onChange={e => setNewAssignTier(e.target.value)}
+                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white font-bold text-indigo-700 focus:border-indigo-500 outline-none"
+                                                    >
+                                                        <option value="Basic">Basic (Premium Plan)</option>
+                                                        <option value="Premium">Premium Only</option>
+                                                        <option value="Gold">Gold Only</option>
+                                                        <option value="Platinum">Platinum Only</option>
+                                                    </select>
+                                                </div>
+
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-4 mb-1">
                                                         <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
@@ -1137,10 +1260,10 @@ const ManageCourseModules = () => {
                                                     </div>
                                                     {isAssignUrlMode ? (
                                                         <input type="url" placeholder="https://drive.google.com/..." value={newAssignUrl} onChange={e => setNewAssignUrl(e.target.value)}
-                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none" />
+                                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 outline-none font-medium" />
                                                     ) : (
                                                         <div className="flex items-center gap-3">
-                                                            <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                                                            <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 font-medium">
                                                                 <Upload size={14} /> Choose Document (PDF, Image)
                                                                 <input type="file" accept="application/pdf,image/*" className="hidden" onChange={e => setNewAssignFile(e.target.files[0])} />
                                                             </label>
@@ -1149,7 +1272,7 @@ const ManageCourseModules = () => {
                                                     )}
                                                 </div>
                                                 <button onClick={handleAddAssignment} disabled={savingAssign}
-                                                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                                                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-all">
                                                     {savingAssign ? 'Adding...' : <><Plus size={15} /> Add Document</>}
                                                 </button>
                                             </div>

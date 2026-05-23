@@ -1,557 +1,391 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Eye, EyeOff, ArrowLeft, Mail, Phone, Calendar, MapPin, Building, GraduationCap, Upload, BookOpen, Star, Quote, TrendingUp, Users } from 'lucide-react';
+import { Mail, Eye, EyeOff, Phone, Calendar, MapPin, Building, GraduationCap, Upload, Star, Quote, Users, TrendingUp, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const getDynamicStats = () => {
+    const now = new Date();
+    const h = now.getHours(), m = now.getMinutes();
+    const seed = now.getDate() + now.getMonth() * 31 + now.getFullYear();
+    const base = 10 + (seed % 5), max = 50 + (seed % 11);
+    const today = Math.floor(base + (max - base) * ((h * 60 + m) / 1440));
+    const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const week = (314 + seed % 15) + dow * 35 + today;
+    const month = (1160 + seed % 40) + now.getDate() * 42 + today;
+    const days = Math.ceil(Math.abs(now - new Date('2026-01-01')) / 86400000);
+    return { today, week, month, total: 50000 + days * 85 + today };
+};
+
+const STEPS = ['Account', 'Personal', 'Enroll'];
+
 const Register = () => {
     const navigate = useNavigate();
-    const [showPassword, setShowPassword] = useState(false);
+    const [step, setStep] = useState(1);
+    const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
     const [reviews, setReviews] = useState([]);
-    const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
-    const [joinCounts, setJoinCounts] = useState({
-        today: 0,
-        week: 0,
-        month: 0
-    });
-
-    // Step-based form for better UX
-    const [step, setStep] = useState(1);
-    const totalSteps = 3;
-
+    const [revIdx, setRevIdx] = useState(0);
+    const [stats, setStats] = useState({ today: 0, week: 0, month: 0, total: 0 });
     const [batches, setBatches] = useState([]);
     const [settings, setSettings] = useState(null);
-
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
-        password: '',
-        phone: '',
-        dob: '',
-        gender: '',
-        address: '',
-        city: '',
-        district: '',
-        collegeName: '',
-        batchId: '',
-        profilePicture: null
+    const [preview, setPreview] = useState(null);
+    const [form, setForm] = useState({
+        firstName: '', lastName: '', email: '', password: '', phone: '',
+        dob: '', gender: '', address: '', city: '', district: '',
+        collegeName: '', batchId: '', profilePicture: null
     });
 
-    const [previewUrl, setPreviewUrl] = useState(null);
-
     useEffect(() => {
-        const fetchInitialData = async () => {
-            try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-                // Fetch Settings
-                const settingsRes = await axios.get(`${API_URL}/api/settings`);
-                setSettings(settingsRes.data);
-
-                // Fetch Batches
-                const batchesRes = await axios.get(`${API_URL}/api/batches`);
-                const activeBatches = (batchesRes.data.batches || []).filter(b => b.status !== 'completed');
-                setBatches(activeBatches);
-
-                // Fetch Reviews
-                const reviewsRes = await axios.get(`${API_URL}/api/reviews?isApproved=true&limit=5`);
-                if (reviewsRes.data.success && reviewsRes.data.data.length > 0) {
-                    setReviews(reviewsRes.data.data);
-                } else {
-                    setReviews([
-                        { studentName: "Arjun Mehta", role: "Software Engineer", reviewText: "The best learning platform for modern tech stack. The mentors are top-notch!", rating: 5, courseTaken: "Full Stack Development" },
-                        { studentName: "Priya Sharma", role: "UI/UX Designer", reviewText: "Incredible curriculum! I went from zero to a job in 6 months.", rating: 5, courseTaken: "Design Masters" },
-                        { studentName: "Karthik R.", role: "Data Scientist", reviewText: "Very structured and easy to follow. Highly recommended!", rating: 4, courseTaken: "Data Science Boot Camp" }
-                    ]);
-                }
-            } catch (error) {
-                console.error("Failed to fetch initial data:", error);
-            }
-        };
-
-        // Generate random join counts
-        setJoinCounts({
-            today: Math.floor(Math.random() * (45 - 12 + 1)) + 12,
-            week: Math.floor(Math.random() * (320 - 150 + 1)) + 150,
-            month: Math.floor(Math.random() * (1200 - 800 + 1)) + 800
-        });
-
-        fetchInitialData();
+        const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        axios.get(`${API}/api/settings`).then(r => setSettings(r.data)).catch(() => {});
+        axios.get(`${API}/api/batches`).then(r => setBatches((r.data.batches || []).filter(b => b.status !== 'completed'))).catch(() => {});
+        axios.get(`${API}/api/reviews?isApproved=true&limit=5`).then(r => {
+            if (r.data.success && r.data.data.length > 0) setReviews(r.data.data);
+            else setReviews([
+                { studentName: 'Aravind Swamy', role: 'Analyst @ Goldman Sachs', reviewText: 'This course changed my career. The financial modeling modules were critical in cracking my interviews!', rating: 5, courseTaken: 'Investment Banking Elite' },
+                { studentName: 'Meera Deshmukh', role: 'Engineer @ Morgan Stanley', reviewText: 'Exceptional project-based learning. I could learn complex architectures at my own pace.', rating: 5, courseTaken: 'Full Stack Financial Systems' },
+                { studentName: 'Rahul Varma', role: 'Consultant @ PwC', reviewText: 'Outstanding mentorship! The mock quiz setup made the actual certifications a walk in the park.', rating: 5, courseTaken: 'Advanced Risk Management' },
+            ]);
+        }).catch(() => {});
+        setStats(getDynamicStats());
     }, []);
 
-    // Carousel Timer
     useEffect(() => {
-        if (reviews.length === 0) return;
-        const timer = setInterval(() => {
-            setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
-        }, 5000);
-        return () => clearInterval(timer);
+        if (!reviews.length) return;
+        const t = setInterval(() => setRevIdx(p => (p + 1) % reviews.length), 5000);
+        return () => clearInterval(t);
     }, [reviews]);
 
-    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData({ ...formData, profilePicture: file });
-            setPreviewUrl(URL.createObjectURL(file));
-        }
-    };
-
-    const handleNextStep = async () => {
-        // Validation for Step 1
+    const nextStep = async () => {
         if (step === 1) {
-            if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.phone) {
-                toast.error('Please fill in all required fields to continue.');
-                return;
-            }
-            // Basic email validation
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-                toast.error('Please enter a valid email address.');
-                return;
-            }
-
-            // Check if email already exists
+            if (!form.firstName || !form.lastName || !form.email || !form.password || !form.phone)
+                return toast.error('Fill all required fields');
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return toast.error('Invalid email');
             try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const { data } = await axios.get(`${API_URL}/api/students/check-email?email=${formData.email}`);
-                if (data.exists) {
-                    toast.error('This email is already registered. Please log in.');
-                    return;
-                }
-            } catch (err) {
-                console.error("Error checking email:", err);
-                // Continue if check fails, but we warned them.
-            }
+                const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const { data } = await axios.get(`${API}/api/students/check-email?email=${form.email}`);
+                if (data.exists) return toast.error('Email already registered');
+            } catch {}
         }
-
-        // Validation for Step 2
-        if (step === 2) {
-            if (!formData.dob || !formData.gender || !formData.address || !formData.city || !formData.district || !formData.collegeName) {
-                toast.error('Please fill in all required fields to continue.');
-                return;
-            }
-        }
-
-        if (step < totalSteps) setStep(step + 1);
+        if (step === 2 && (!form.dob || !form.gender || !form.address || !form.city || !form.district || !form.collegeName))
+            return toast.error('Fill all required fields');
+        if (step < 3) setStep(s => s + 1);
     };
 
-    const handlePrevStep = () => {
-        if (step > 1) setStep(step - 1);
-    };
-
-    const handleRegister = async (e) => {
-        if (e && e.preventDefault) e.preventDefault();
-
-        // Ensure we only submit on the final step
-        if (step !== totalSteps) {
-            return;
-        }
-
-        // Validation for Step 3
-        if (!formData.batchId) {
-            toast.error('Please select a class (batch).');
-            return;
-        }
-
+    const submit = async () => {
+        if (!form.batchId) return toast.error('Select a batch');
         setLoading(true);
-
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const submitData = new FormData();
-
-        Object.keys(formData).forEach(key => {
-            if (formData[key] !== null && formData[key] !== undefined) {
-                submitData.append(key, formData[key]);
-            }
-        });
-
         try {
-            const res = await axios.post(`${API_URL}/api/students/register`, submitData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-
+            const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const fd = new FormData();
+            Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
+            const res = await axios.post(`${API}/api/students/register`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (res.data.success) {
-                toast.success('Registration successful! Welcome to the portal.');
-                // Save user and token
+                toast.success('Registration successful!');
                 localStorage.setItem('studentUser', JSON.stringify(res.data.user));
                 localStorage.setItem('studentToken', res.data.token);
-
-                // Introduce a slight delay for better UX
-                setTimeout(() => navigate('/dashboard'), 1500);
+                setTimeout(() => navigate('/dashboard'), 1200);
             }
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
-            console.error('Registration Error:', err);
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { toast.error(err.response?.data?.message || 'Registration failed'); }
+        finally { setLoading(false); }
     };
 
-    const stepVariants = {
-        hidden: { opacity: 0, x: 50 },
-        visible: { opacity: 1, x: 0, transition: { duration: 0.4 } },
-        exit: { opacity: 0, x: -50, transition: { duration: 0.3 } }
-    };
+    const rev = reviews[revIdx];
+    const statCards = [
+        { label: 'Today', val: stats.today, icon: Calendar, g: 'from-violet-500 to-purple-600' },
+        { label: 'This Week', val: stats.week, icon: TrendingUp, g: 'from-blue-500 to-cyan-500' },
+        { label: 'This Month', val: stats.month, icon: Users, g: 'from-emerald-500 to-teal-500' },
+        { label: 'Total', val: stats.total, icon: Star, g: 'from-amber-500 to-orange-500' },
+    ];
+
+    const inputCls = "w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm outline-none transition-all bg-gray-50 focus:bg-white focus:border-violet-500 focus:shadow-[0_0_0_4px_rgba(124,58,237,0.08)]";
+    const labelCls = "block text-sm font-semibold text-gray-700 mb-1.5";
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            {/* Left Side - Visual & Branding */}
-            <div className="hidden lg:flex w-1/2 bg-[#0F172A] relative overflow-hidden items-center justify-center">
-                {/* Background Animation & Effects */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute top-0 -left-4 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob"></div>
-                    <div className="absolute top-0 -right-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000"></div>
-                    <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-4000"></div>
-                    
-                    <img
-                        src="https://images.unsplash.com/photo-1513258496099-48168024aec0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80"
-                        alt="Learning Background"
-                        className="w-full h-full object-cover opacity-10 mix-blend-luminosity"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A]/90 via-[#1E293B]/80 to-[#0F172A]/90" />
+        <div className="min-h-screen flex" style={{ fontFamily: "'Inter',sans-serif" }}>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+            {/* LEFT PANEL */}
+            <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden flex-col justify-between p-10"
+                style={{ background: 'linear-gradient(135deg,#0a0a1a 0%,#0d1117 40%,#0f0f2e 100%)' }}>
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full opacity-20"
+                        style={{ background: 'radial-gradient(circle,#7c3aed,transparent 70%)', animation: 'float 8s ease-in-out infinite' }} />
+                    <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full opacity-15"
+                        style={{ background: 'radial-gradient(circle,#2563eb,transparent 70%)', animation: 'float 10s ease-in-out infinite reverse' }} />
+                    <div className="absolute inset-0 opacity-[0.03]"
+                        style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.3) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
                 </div>
 
-                <div className="relative z-10 w-full max-w-2xl px-12">
-                    {/* Header Text */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
-                        className="mb-12 text-center"
-                    >
-                        <h1 className="text-5xl font-extrabold text-white mb-6 tracking-tight leading-tight">
-                            Start Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Journey</span>
+                {/* Brand */}
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 flex items-center gap-3">
+                    {settings?.logoUrl
+                        ? <img src={settings.logoUrl} alt={settings.siteTitle} className="h-10 w-auto object-contain" />
+                        : <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg"
+                            style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>{settings?.siteTitle?.charAt(0) || 'F'}</div>
+                    }
+                    <span className="text-white font-bold text-lg">{settings?.siteTitle || 'Finwise Careers'}</span>
+                </motion.div>
+
+                {/* Hero */}
+                <div className="relative z-10 flex-1 flex flex-col justify-center py-6">
+                    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5 border"
+                            style={{ background: 'rgba(124,58,237,.15)', borderColor: 'rgba(124,58,237,.3)' }}>
+                            <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                            <span className="text-violet-300 text-xs font-semibold tracking-wider uppercase">Join 50,000+ Students</span>
+                        </div>
+                        <h1 className="text-4xl font-black text-white leading-tight mb-4">
+                            Start Your<br />
+                            <span style={{ background: 'linear-gradient(135deg,#a78bfa,#60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                Success Story
+                            </span><br />Today.
                         </h1>
-                        <p className="text-slate-400 text-lg leading-relaxed max-w-md mx-auto">
-                            Join our platform to access premium courses, interactive mock interviews, and advanced training systems.
+                        <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-xs">
+                            Get access to expert-led courses, hands-on projects, and career support — all in one platform.
                         </p>
-                    </motion.div>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-4 mb-12">
-                        {[
-                            { label: 'Today Joined', count: joinCounts.today, icon: Calendar, color: 'from-blue-500 to-cyan-500' },
-                            { label: 'This Week', count: joinCounts.week, icon: TrendingUp, color: 'from-indigo-500 to-purple-500' },
-                            { label: 'This Month', count: joinCounts.month, icon: Users, color: 'from-pink-500 to-rose-500' }
-                        ].map((stat, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.2 + (idx * 0.1) }}
-                                className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl text-center hover:bg-slate-800/60 transition-all group"
-                            >
-                                <div className={`w-10 h-10 mx-auto mb-3 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform`}>
-                                    <stat.icon size={20} className="text-white" />
-                                </div>
-                                <div className="text-2xl font-bold text-white mb-1">
-                                    {stat.count}+
-                                </div>
-                                <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
-                                    {stat.label}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
+                        {/* Stats */}
+                        <div className="grid grid-cols-4 gap-2 mb-8">
+                            {statCards.map((s, i) => {
+                                const Icon = s.icon;
+                                return (
+                                    <motion.div key={i} initial={{ opacity: 0, scale: .8 }} animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: .4 + i * .1 }}
+                                        className="rounded-2xl p-2.5 text-center border"
+                                        style={{ background: 'rgba(255,255,255,.04)', borderColor: 'rgba(255,255,255,.07)' }}>
+                                        <div className={`w-7 h-7 mx-auto mb-1.5 rounded-lg bg-gradient-to-br ${s.g} flex items-center justify-center`}>
+                                            <Icon size={12} className="text-white" />
+                                        </div>
+                                        <div className="text-sm font-black text-white">{s.val ? s.val.toLocaleString() : '0'}+</div>
+                                        <div className="text-[8px] uppercase tracking-widest text-slate-500 font-medium">{s.label}</div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
 
-                    {/* Review Carousel */}
-                    <div className="relative h-48">
-                        <AnimatePresence mode='wait'>
-                            {reviews.length > 0 && (
-                                <motion.div
-                                    key={currentReviewIndex}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.5 }}
-                                    className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-3xl relative overflow-hidden"
-                                >
-                                    <Quote className="absolute -top-2 -left-2 w-12 h-12 text-white/5 transform -rotate-12" />
-                                    
-                                    <div className="flex items-center gap-1 mb-4 text-amber-400">
+                        {/* Review */}
+                        {rev && (
+                            <AnimatePresence mode="wait">
+                                <motion.div key={revIdx} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
+                                    transition={{ duration: .35 }} className="rounded-2xl p-4 border relative"
+                                    style={{ background: 'rgba(255,255,255,.04)', borderColor: 'rgba(255,255,255,.07)' }}>
+                                    <Quote className="absolute top-3 right-3 text-white/5" size={32} />
+                                    <div className="flex gap-0.5 mb-2">
                                         {[...Array(5)].map((_, i) => (
-                                            <Star 
-                                                key={i} 
-                                                size={14} 
-                                                fill={i < (reviews[currentReviewIndex].rating || 5) ? "currentColor" : "none"} 
-                                                className={i < (reviews[currentReviewIndex].rating || 5) ? "" : "text-slate-600"}
-                                            />
+                                            <Star key={i} size={11} className={i < (rev.rating || 5) ? 'text-amber-400' : 'text-slate-700'}
+                                                fill={i < (rev.rating || 5) ? 'currentColor' : 'none'} />
                                         ))}
                                     </div>
-
-                                    <p className="text-slate-300 text-sm italic mb-6 leading-relaxed line-clamp-3">
-                                        "{reviews[currentReviewIndex].reviewText}"
-                                    </p>
-
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                                            {reviews[currentReviewIndex].studentName.charAt(0)}
-                                        </div>
+                                    <p className="text-slate-300 text-xs leading-relaxed mb-3 line-clamp-2 italic">"{rev.reviewText}"</p>
+                                    <div className="flex items-center gap-2">
+                                        {rev.studentImage && rev.studentImage !== 'no-photo.jpg'
+                                            ? <img src={rev.studentImage} alt={rev.studentName} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+                                            : <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
+                                                style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>{rev.studentName?.charAt(0)}</div>
+                                        }
                                         <div>
-                                            <div className="text-sm font-semibold text-white">
-                                                {reviews[currentReviewIndex].studentName}
-                                            </div>
-                                            <div className="text-xs text-slate-500">
-                                                {reviews[currentReviewIndex].role} • {reviews[currentReviewIndex].courseTaken}
-                                            </div>
+                                            <div className="text-xs font-semibold text-white">{rev.studentName}</div>
+                                            <div className="text-[10px] text-slate-500">{rev.role}</div>
                                         </div>
                                     </div>
+                                    <div className="flex gap-1 mt-3">
+                                        {reviews.map((_, i) => (
+                                            <button key={i} onClick={() => setRevIdx(i)}
+                                                className={`h-1 rounded-full transition-all ${i === revIdx ? 'w-5 bg-violet-500' : 'w-1.5 bg-slate-700'}`} />
+                                        ))}
+                                    </div>
                                 </motion.div>
-                            )}
-                        </AnimatePresence>
-                        
-                        {/* Carousel Indicators */}
-                        <div className="flex justify-center gap-2 mt-6">
-                            {reviews.map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setCurrentReviewIndex(i)}
-                                    className={`h-1 rounded-full transition-all duration-300 ${i === currentReviewIndex ? 'w-8 bg-indigo-500' : 'w-2 bg-slate-700'}`}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                            </AnimatePresence>
+                        )}
+                    </motion.div>
                 </div>
             </div>
 
-            {/* Right Side - Form */}
-            <div className="w-full lg:w-1/2 flex flex-col justify-center py-12 px-6 lg:px-16 xl:px-24 bg-white overflow-y-auto">
-                <div className="w-full max-w-md mx-auto relative">
-                    <div className="mb-8">
-                        <h3 className="text-2xl font-bold text-gray-900">Create Account</h3>
-                        <p className="text-gray-500 mt-1">Step {step} of {totalSteps}</p>
+            {/* RIGHT PANEL */}
+            <div className="flex-1 flex flex-col bg-white relative overflow-y-auto">
+                <div className="absolute top-0 left-0 right-0 h-1" style={{ background: 'linear-gradient(90deg,#7c3aed,#2563eb,#06b6d4)' }} />
 
-                        {/* Progress Bar */}
-                        <div className="w-full bg-gray-100 h-2 rounded-full mt-4 overflow-hidden">
-                            <motion.div
-                                className="h-full bg-indigo-600 rounded-full"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${(step / totalSteps) * 100}%` }}
-                                transition={{ duration: 0.5, ease: "easeInOut" }}
-                            />
+                <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-14 xl:px-16 py-10">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg mx-auto">
+
+                        {/* Header */}
+                        <div className="mb-7">
+                            <h2 className="text-2xl font-black text-gray-900 mb-1">Create your account 🚀</h2>
+                            <p className="text-gray-500 text-sm">Step {step} of 3 — {STEPS[step - 1]}</p>
+                            <div className="flex gap-2 mt-4">
+                                {STEPS.map((s, i) => (
+                                    <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${i < step ? 'bg-violet-600' : 'bg-gray-200'}`} />
+                                ))}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="relative min-h-[400px] pb-24">
                         <AnimatePresence mode="wait">
-                            {/* STEP 1: Basic Info */}
+                            {/* STEP 1 */}
                             {step === 1 && (
-                                <motion.div
-                                    key="step1"
-                                    variants={stepVariants}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    className="space-y-5"
-                                >
+                                <motion.div key="s1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
-                                            <div className="relative">
-                                                <input type="text" name="firstName" required value={formData.firstName} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="John" />
-                                                <User size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                                        {[['firstName', 'First Name', 'John'], ['lastName', 'Last Name', 'Doe']].map(([k, label, ph]) => (
+                                            <div key={k}>
+                                                <label className={labelCls}>{label}</label>
+                                                <div className="relative">
+                                                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                    <input type="text" value={form[k]} onChange={e => set(k, e.target.value)} placeholder={ph} className={inputCls} />
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
-                                            <div className="relative">
-                                                <input type="text" name="lastName" required value={formData.lastName} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Doe" />
-                                                <User size={18} className="absolute left-3 top-3.5 text-gray-400" />
-                                            </div>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Email Address</label>
+                                        <div className="relative">
+                                            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@email.com" className={inputCls} />
                                         </div>
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                                        <label className={labelCls}>Password</label>
                                         <div className="relative">
-                                            <input type="email" name="email" required value={formData.email} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="john@example.com" />
-                                            <Mail size={18} className="absolute left-3 top-3.5 text-gray-400" />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-                                        <div className="relative">
-                                            <input type={showPassword ? "text" : "password"} name="password" required value={formData.password} onChange={handleChange} className="w-full p-3 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-gray-400">
-                                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            <input type={showPw ? 'text' : 'password'} value={form.password} onChange={e => set('password', e.target.value)} placeholder="Min 8 characters"
+                                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm outline-none transition-all bg-gray-50 focus:bg-white focus:border-violet-500 focus:shadow-[0_0_0_4px_rgba(124,58,237,0.08)]" />
+                                            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-violet-600">
+                                                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                                             </button>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
+                                        <label className={labelCls}>Phone Number</label>
                                         <div className="relative">
-                                            <input type="tel" name="phone" required value={formData.phone} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="+91 9876543210" />
-                                            <Phone size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                                            <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+91 98765 43210" className={inputCls} />
                                         </div>
                                     </div>
                                 </motion.div>
                             )}
 
-                            {/* STEP 2: Personal Details */}
+                            {/* STEP 2 */}
                             {step === 2 && (
-                                <motion.div
-                                    key="step2"
-                                    variants={stepVariants}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    className="space-y-5"
-                                >
+                                <motion.div key="s2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
+                                            <label className={labelCls}>Date of Birth</label>
                                             <div className="relative">
-                                                <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
-                                                <Calendar size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                                                <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                <input type="date" value={form.dob} onChange={e => set('dob', e.target.value)} className={inputCls} />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
-                                            <select name="gender" value={formData.gender} onChange={handleChange} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                <option value="">Select Gender</option>
-                                                <option value="Male">Male</option>
-                                                <option value="Female">Female</option>
-                                                <option value="Other">Other</option>
+                                            <label className={labelCls}>Gender</label>
+                                            <select value={form.gender} onChange={e => set('gender', e.target.value)}
+                                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm outline-none bg-gray-50 focus:bg-white focus:border-violet-500">
+                                                <option value="">Select</option>
+                                                {['Male', 'Female', 'Other'].map(g => <option key={g} value={g}>{g}</option>)}
                                             </select>
                                         </div>
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
+                                        <label className={labelCls}>Address</label>
                                         <div className="relative">
-                                            <input type="text" name="address" value={formData.address} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="123 Main St" />
-                                            <MapPin size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                                            <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input type="text" value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street address" className={inputCls} />
                                         </div>
                                     </div>
-
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
-                                            <input type="text" name="city" value={formData.city} onChange={handleChange} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="City" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1">District</label>
-                                            <input type="text" name="district" value={formData.district} onChange={handleChange} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="District" />
-                                        </div>
+                                        {[['city', 'City', 'Hyderabad'], ['district', 'District', 'Rangareddy']].map(([k, label, ph]) => (
+                                            <div key={k}>
+                                                <label className={labelCls}>{label}</label>
+                                                <input type="text" value={form[k]} onChange={e => set(k, e.target.value)} placeholder={ph}
+                                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm outline-none bg-gray-50 focus:bg-white focus:border-violet-500" />
+                                            </div>
+                                        ))}
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1">College Name</label>
+                                        <label className={labelCls}>College / Institution</label>
                                         <div className="relative">
-                                            <input type="text" name="collegeName" value={formData.collegeName} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="University of Example" />
-                                            <Building size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                                            <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input type="text" value={form.collegeName} onChange={e => set('collegeName', e.target.value)} placeholder="Your college name" className={inputCls} />
                                         </div>
                                     </div>
                                 </motion.div>
                             )}
 
-                            {/* STEP 3: Course & Profile */}
+                            {/* STEP 3 */}
                             {step === 3 && (
-                                <motion.div
-                                    key="step3"
-                                    variants={stepVariants}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    className="space-y-5"
-                                >
+                                <motion.div key="s3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-5">
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Select Class (Batch)</label>
+                                        <label className={labelCls}>Select Class / Batch</label>
                                         <div className="relative">
-                                            <select name="batchId" required value={formData.batchId} onChange={handleChange} className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none">
+                                            <GraduationCap size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <select value={form.batchId} onChange={e => set('batchId', e.target.value)}
+                                                className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm outline-none bg-gray-50 focus:bg-white focus:border-violet-500 appearance-none">
                                                 <option value="">-- Choose a Batch --</option>
-                                                {batches.map(batch => (
-                                                    <option key={batch._id} value={batch._id}>
-                                                        {batch.name} (Starts: {new Date(batch.startDate).toLocaleDateString()})
-                                                    </option>
-                                                ))}
+                                                {batches.map(b => <option key={b._id} value={b._id}>{b.name} (Starts: {new Date(b.startDate).toLocaleDateString()})</option>)}
                                             </select>
-                                            <GraduationCap size={18} className="absolute left-3 top-3.5 text-gray-400" />
                                         </div>
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Profile Picture</label>
-                                        <div className="flex items-center justify-center w-full">
-                                            <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                                                {previewUrl ? (
-                                                    <div className="flex items-center gap-4 p-2">
-                                                        <img src={previewUrl} alt="Preview" className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md" />
-                                                        <span className="text-sm font-medium text-indigo-600">Change Image</span>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                        <Upload className="w-8 h-8 mb-3 text-gray-400" />
-                                                        <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                                        <p className="text-xs text-gray-500">SVG, PNG, JPG or GIF (MAX. 5MB)</p>
-                                                    </div>
-                                                )}
-                                                <input id="dropzone-file" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                                            </label>
-                                        </div>
+                                        <label className={labelCls}>Profile Picture <span className="text-gray-400 font-normal">(optional)</span></label>
+                                        <label htmlFor="pic-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-violet-50 hover:border-violet-400 transition-all">
+                                            {preview ? (
+                                                <div className="flex items-center gap-4 p-3">
+                                                    <img src={preview} alt="Preview" className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md" />
+                                                    <span className="text-sm font-medium text-violet-600">Change Photo</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center py-4">
+                                                    <Upload size={24} className="text-gray-400 mb-2" />
+                                                    <p className="text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag & drop</p>
+                                                    <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                                                </div>
+                                            )}
+                                            <input id="pic-upload" type="file" className="hidden" accept="image/*" onChange={e => {
+                                                const f = e.target.files[0];
+                                                if (f) { set('profilePicture', f); setPreview(URL.createObjectURL(f)); }
+                                            }} />
+                                        </label>
                                     </div>
-
-                                    <div className="bg-indigo-50 rounded-xl p-4 mt-4 border border-indigo-100">
-                                        <p className="text-sm text-indigo-800 flex items-start gap-2">
-                                            <span className="text-indigo-500 mt-0.5">ℹ</span>
-                                            Upon successful registration, your 10-day free trial will begin immediately. You can access all portal features during this time.
+                                    <div className="rounded-xl p-4 border" style={{ background: 'rgba(124,58,237,.05)', borderColor: 'rgba(124,58,237,.15)' }}>
+                                        <p className="text-sm text-violet-800 flex items-start gap-2">
+                                            <span className="text-violet-500 font-bold mt-0.5">ℹ</span>
+                                            Your 10-day free trial starts immediately after registration. Full access to all portal features included.
                                         </p>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        {/* Navigation Buttons */}
-                        <div className="absolute bottom-0 left-0 w-full flex justify-between pt-6 border-t border-gray-100 mt-6 bg-white">
+                        {/* Nav Buttons */}
+                        <div className="flex items-center justify-between mt-7 pt-5 border-t border-gray-100">
                             {step > 1 ? (
-                                <button
-                                    type="button"
-                                    onClick={handlePrevStep}
-                                    className="px-6 py-2.5 rounded-lg text-gray-700 font-semibold hover:bg-gray-100 transition-colors"
-                                >
-                                    Previous
-                                </button>
-                            ) : <div></div>}
-
-                            {step < totalSteps ? (
-                                <button
-                                    type="button"
-                                    onClick={handleNextStep}
-                                    className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all hover:-translate-y-0.5"
-                                >
-                                    Next Step
+                                <button onClick={() => setStep(s => s - 1)}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
+                                    ← Back
                                 </button>
                             ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleRegister}
-                                    disabled={loading}
-                                    className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all hover:-translate-y-0.5 flex items-center gap-2"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
-                                            Creating...
-                                        </>
-                                    ) : (
-                                        "Complete Registration"
-                                    )}
+                                <Link to="/login" className="text-sm text-gray-500 hover:text-violet-600 font-medium transition-colors">Already have an account?</Link>
+                            )}
+                            {step < 3 ? (
+                                <button onClick={nextStep}
+                                    className="px-7 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+                                    style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>
+                                    Continue →
+                                </button>
+                            ) : (
+                                <button onClick={submit} disabled={loading}
+                                    className="px-7 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-70 flex items-center gap-2"
+                                    style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>
+                                    {loading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating...</> : 'Complete Registration ✓'}
                                 </button>
                             )}
                         </div>
-                    </div>
-
-                    {step === 1 && (
-                        <div className="mt-8 text-center text-sm text-gray-500 border-t border-gray-100 pt-6">
-                            Already have an account? <Link to="/login" className="text-indigo-600 font-bold hover:underline">Log in here</Link>
-                        </div>
-                    )}
+                    </motion.div>
                 </div>
             </div>
+
+            <style>{`@keyframes float { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-25px) scale(1.04)} }`}</style>
         </div>
     );
 };

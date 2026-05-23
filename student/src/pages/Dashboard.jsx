@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FcReading } from 'react-icons/fc';
+import { fireLoginBlast, fireSuccessBlast } from '../utils/confetti';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -137,6 +138,17 @@ const Dashboard = () => {
             window.removeEventListener('finwise-activity-sync', handleSync);
         };
     }, [fetchDashboardData]);
+
+    useEffect(() => {
+        const showBlast = localStorage.getItem('showLoginBlast');
+        if (showBlast === 'true') {
+            localStorage.removeItem('showLoginBlast');
+            const timer = setTimeout(() => {
+                fireLoginBlast();
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
     const fetchActivity = async (range, studentId) => {
         if (!studentId) return;
@@ -424,7 +436,10 @@ const Dashboard = () => {
                                         {user?.name || 'Balaganesh Mala'}
                                     </h3>
                                     <button
-                                        onClick={() => setShowMiniLeaderboard(true)}
+                                        onClick={() => {
+                                             setShowMiniLeaderboard(true);
+                                             fireSuccessBlast();
+                                         }}
                                         className="flex items-center gap-1.5 text-xs font-black text-indigo-650 hover:text-indigo-850 transition-colors mt-2.5 bg-indigo-50/80 px-3.5 py-1.5 rounded-[8px] border border-indigo-100 shadow-sm"
                                     >
                                         <Trophy size={12} className="text-indigo-500 fill-indigo-500/10 animate-pulse" />

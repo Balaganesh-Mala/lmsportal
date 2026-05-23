@@ -11,6 +11,7 @@ import {
 import { motion } from 'framer-motion';
 import ProtectedViewer from '../components/ProtectedViewer';
 import toast from 'react-hot-toast';
+import { fireSuccessBlast } from '../utils/confetti';
 
 const CoursePlayer = () => {
     const { courseId } = useParams();
@@ -29,11 +30,11 @@ const CoursePlayer = () => {
 
     // --- Subscription Tier Logic ---
     const TIER_LEVELS = {
-        'Premium': 3,
-        'Platinum': 3,
-        'Full': 3,
-        'Intermediate': 2,
-        'Gold': 2,
+        'Platinum': 4,
+        'Full': 4,
+        'Gold': 3,
+        'Intermediate': 3,
+        'Premium': 2,
         'Basic': 1
     };
 
@@ -71,6 +72,7 @@ const CoursePlayer = () => {
     const [timeLeft, setTimeLeft] = useState(30);
     const [quizResult, setQuizResult] = useState(null);
     const [shuffledQuestions, setShuffledQuestions] = useState([]); // questions with shuffled options
+    const [activeQuizIndex, setActiveQuizIndex] = useState(null);
     const timerRef = useRef(null);
 
     // Task Submission State
@@ -126,7 +128,8 @@ const CoursePlayer = () => {
         questions.map(q => ({ ...q, options: shuffle(q.options || []) }));
 
     const startQuiz = () => {
-        const qs = topicContent?.mcqTest?.testId?.questions || [];
+        const test = activeQuizIndex !== null ? topicContent?.mcqTests?.[activeQuizIndex]?.testId : topicContent?.mcqTest?.testId;
+        const qs = test?.questions || [];
         setShuffledQuestions(buildShuffledQuestions(qs));
         setMcqAnswers({});
         setCurrentQIdx(0);
@@ -135,9 +138,15 @@ const CoursePlayer = () => {
     };
 
     const retakeQuiz = () => {
-        // Reset result and restart
+        const activeTest = activeQuizIndex !== null ? topicContent?.mcqTests?.[activeQuizIndex]?.testId : topicContent?.mcqTest?.testId;
         setQuizResult(null);
-        setMySubmissions(prev => ({ ...prev, mcq: null }));
+        if (activeTest) {
+            setMySubmissions(prev => ({
+                ...prev,
+                mcq: prev.mcq?.testId === activeTest._id || prev.mcq?.testId?._id === activeTest._id ? null : prev.mcq,
+                mcqs: (prev.mcqs || []).filter(x => x.testId !== activeTest._id && x.testId?._id !== activeTest._id)
+            }));
+        }
         startQuiz();
     };
 
@@ -162,7 +171,7 @@ const CoursePlayer = () => {
 
 
     // ✅ Auto-mark topic complete when quiz or assignment is submitted
-    const autoMarkTopicComplete = async (topicId, type) => {
+    const autoMarkTopicComplete = async (topicId, type, setStatusValue = true, assignmentId = null) => {
         const storedUser = JSON.parse(localStorage.getItem('studentUser'));
         if (!storedUser || !topicId) return;
 
@@ -173,8 +182,13 @@ const CoursePlayer = () => {
             watchedDuration: 0
         };
 
-        if (type === 'quiz') payload.quizCompleted = true;
-        if (type === 'assignment') payload.assignmentCompleted = true;
+        if (type === 'quiz') payload.quizCompleted = setStatusValue;
+        if (type === 'assignment') {
+            payload.assignmentCompleted = setStatusValue;
+            if (assignmentId) {
+                payload.assignmentId = assignmentId;
+            }
+        }
 
         try {
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/student/progress/update`, payload);
@@ -187,12 +201,55 @@ const CoursePlayer = () => {
         }
     };
 
+    // Helper to check if all accessible quizzes in the active topic are passed
+    const checkIfAllAccessibleQuizzesPassed = (updatedAttempts = null) => {
+        if (!topicContent) return false;
+        const attemptsToUse = updatedAttempts || mySubmissions?.mcqs || [];
+
+        // 1. If multiple quizzes are configured
+        if (topicContent.mcqTests && topicContent.mcqTests.length > 0) {
+            const accessibleQuizzes = topicContent.mcqTests.filter(quizItem => {
+                if (!quizItem.enabled) return false;
+                return hasTierAccess(quizItem.requiredTier || 'Basic');
+            });
+
+            if (accessibleQuizzes.length === 0) return false;
+
+            return accessibleQuizzes.every(quizItem => {
+                const testIdStr = quizItem.testId?._id?.toString() || quizItem.testId?.toString();
+                const attempt = attemptsToUse.find(sub => {
+                    const subIdStr = sub.testId?._id?.toString() || sub.testId?.toString();
+                    return subIdStr === testIdStr;
+                });
+                if (!attempt) return false;
+                const scorePct = Math.round((attempt.score / (attempt.total || 1)) * 100);
+                return scorePct >= 75;
+            });
+        }
+
+        // 2. Legacy single quiz fallback
+        if (topicContent.mcqTest?.enabled && topicContent.mcqTest?.testId) {
+            const testIdStr = topicContent.mcqTest.testId?._id?.toString() || topicContent.mcqTest.testId?.toString();
+            const attempt = attemptsToUse.find(sub => {
+                const subIdStr = sub.testId?._id?.toString() || sub.testId?.toString();
+                return subIdStr === testIdStr;
+            }) || mySubmissions.mcq;
+
+            if (!attempt) return false;
+            const scorePct = Math.round((attempt.score / (attempt.total || 1)) * 100);
+            return scorePct >= 75;
+        }
+
+        return false;
+    };
+
     const submitQuiz = async () => {
         if (quizPhase === 'submitted' || mcqSubmitting) return;
 
         setQuizPhase('submitted');
         const storedUser = JSON.parse(localStorage.getItem('studentUser'));
-        if (!storedUser || !topicContent?.mcqTest?.testId) return;
+        const activeTest = activeQuizIndex !== null ? topicContent?.mcqTests?.[activeQuizIndex]?.testId : topicContent?.mcqTest?.testId;
+        if (!storedUser || !activeTest) return;
 
         setMcqSubmitting(true);
         try {
@@ -203,31 +260,74 @@ const CoursePlayer = () => {
 
             const res = await axios.post(
                 `${import.meta.env.VITE_API_URL}/api/topic-content/${activeTopic._id}/attempt-mcq`,
-                { studentId: storedUser._id, testId: topicContent.mcqTest.testId._id, answers }
+                { studentId: storedUser._id, testId: activeTest._id, answers }
             );
 
             setQuizResult(res.data.attempt);
-            setMySubmissions(prev => ({ ...prev, mcq: res.data.attempt }));
+            setMySubmissions(prev => {
+                const filtered = (prev.mcqs || []).filter(x => x.testId !== activeTest._id && x.testId?._id !== activeTest._id);
+                return { 
+                    ...prev, 
+                    mcq: res.data.attempt,
+                    mcqs: [...filtered, res.data.attempt]
+                };
+            });
 
             const attempt = res.data.attempt;
             const scorePct = Math.round((attempt.score / (attempt.total || 1)) * 100);
 
+            const updatedAttemptsList = [
+                ...(mySubmissions.mcqs || []).filter(x => {
+                    const xIdStr = x.testId?._id?.toString() || x.testId?.toString();
+                    const activeIdStr = activeTest._id?.toString();
+                    return xIdStr !== activeIdStr;
+                }),
+                attempt
+            ];
+
             if (scorePct >= 75) {
-                toast.success(`Quiz passed with ${scorePct}%! Topic marked as complete.`);
-                await autoMarkTopicComplete(activeTopic._id, 'quiz');
+                const allPassed = checkIfAllAccessibleQuizzesPassed(updatedAttemptsList);
+                fireSuccessBlast(); // 🎉 Trigger beautiful paper blast for successfully passing this quiz!
+                if (allPassed) {
+                    toast.success(`Congratulations! You passed all quizzes in this session! Topic marked as complete.`);
+                    await autoMarkTopicComplete(activeTopic._id, 'quiz', true);
+                } else {
+                    toast.success(`Quiz passed with ${scorePct}%! Complete all remaining quizzes to finish this topic.`);
+                    await autoMarkTopicComplete(activeTopic._id, 'quiz', false);
+                }
             } else {
                 toast.error(`You scored ${scorePct}%. Passing score is 75%. Please retake.`);
+                await autoMarkTopicComplete(activeTopic._id, 'quiz', false);
             }
         } catch (err) {
             // Already attempted or failed
             if (err.response?.data?.attempt) {
                 const attempt = err.response.data.attempt;
                 setQuizResult(attempt);
-                setMySubmissions(prev => ({ ...prev, mcq: attempt }));
+                setMySubmissions(prev => {
+                    const filtered = (prev.mcqs || []).filter(x => x.testId !== activeTest._id && x.testId?._id !== activeTest._id);
+                    return { 
+                        ...prev, 
+                        mcq: attempt,
+                        mcqs: [...filtered, attempt]
+                    };
+                });
 
                 const scorePct = Math.round((attempt.score / (attempt.total || 1)) * 100);
+                const updatedAttemptsList = [
+                    ...(mySubmissions.mcqs || []).filter(x => {
+                        const xIdStr = x.testId?._id?.toString() || x.testId?.toString();
+                        const activeIdStr = activeTest._id?.toString();
+                        return xIdStr !== activeIdStr;
+                    }),
+                    attempt
+                ];
+
                 if (scorePct >= 75) {
-                    await autoMarkTopicComplete(activeTopic._id, 'quiz');
+                    const allPassed = checkIfAllAccessibleQuizzesPassed(updatedAttemptsList);
+                    await autoMarkTopicComplete(activeTopic._id, 'quiz', allPassed);
+                } else {
+                    await autoMarkTopicComplete(activeTopic._id, 'quiz', false);
                 }
             } else {
                 toast.error(err.response?.data?.message || 'Failed to submit quiz');
@@ -323,6 +423,10 @@ const CoursePlayer = () => {
         const storedUser = JSON.parse(localStorage.getItem('studentUser'));
         setTopicContent(null);
         setMcqAnswers({});
+        setActiveQuizIndex(null);
+        setQuizResult(null);
+        setQuizPhase('idle');
+        setCurrentQIdx(0);
         setContentLoading(true);
 
         const loadContent = async () => {
@@ -545,6 +649,7 @@ const CoursePlayer = () => {
             }
             if (completed && !progress[activeTopic._id]?.completed) {
                 toast.success('Lesson Completed!');
+                fireSuccessBlast();
                 // Dispatch global sync event for real-time Navbar update
                 window.dispatchEvent(new CustomEvent('finwise-activity-sync'));
             }
@@ -608,6 +713,7 @@ const CoursePlayer = () => {
                 return { ...prev, assignments: newAssign };
             });
             toast.success('Assignment uploaded! Topic marked as complete.');
+            fireSuccessBlast();
             // ✅ Auto-mark topic as complete when assignment is submitted
             await autoMarkTopicComplete(activeTopic._id, 'assignment');
         } catch (err) {
@@ -745,11 +851,12 @@ const CoursePlayer = () => {
                             <Lock size={10} className="text-amber-400" />
                             <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">Protected</span>
                         </div>
-                        {activeTopic && !progress[activeTopic._id]?.assignmentCompleted && (
+                        {activeTopic && !progress[activeTopic._id]?.completedAssignments?.includes(selectedDocument._id) && (
                             <button
                                 onClick={() => {
-                                    autoMarkTopicComplete(activeTopic._id, 'assignment');
+                                    autoMarkTopicComplete(activeTopic._id, 'assignment', true, selectedDocument._id);
                                     toast.success('Document marked as completed!');
+                                    fireSuccessBlast();
                                     setSelectedDocument(null);
                                 }}
                                 className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-full text-white transition-colors"
@@ -889,7 +996,7 @@ const CoursePlayer = () => {
                             const p = progress[t._id] || {};
                             modTotal++;
                             if (p.videoCompleted || p.completed) modComp++;
-                            if (content.mcqTest?.enabled) {
+                            if (content.mcqTest?.enabled || (content.mcqTests?.length || 0) > 0) {
                                 modTotal++;
                                 if (p.quizCompleted) modComp++;
                             }
@@ -934,7 +1041,7 @@ const CoursePlayer = () => {
                                             const isActive = activeTopic?._id === topic._id;
                                             const isCompleted = progress[topic._id]?.completed;
                                             const isLast = tIdx === module.topics.length - 1;
-                                            const hasMcq = topicContentMap[topic._id]?.mcqTest?.enabled;
+                                            const hasMcq = topicContentMap[topic._id]?.mcqTest?.enabled || (topicContentMap[topic._id]?.mcqTests?.length || 0) > 0;
                                             const hasAssignment = (topicContentMap[topic._id]?.assignments?.length || 0) > 0;
                                             const isQuizActive = activeView?.type === 'quiz' && activeView?.topicId === topic._id;
                                             const isAssignActive = activeView?.type === 'assignment' && activeView?.topicId === topic._id;
@@ -1352,13 +1459,21 @@ const CoursePlayer = () => {
                                                     <h2 className="font-bold text-gray-900">MCQ Practice</h2>
                                                     <p className="text-xs text-gray-500 mt-0.5">{activeTopic.title}</p>
                                                 </div>
-                                                <button onClick={() => setActiveView({ type: 'video', topicId: activeTopic._id })} className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1"><ArrowLeft size={14} /> Back to video</button>
+                                                {activeQuizIndex !== null && topicContent?.mcqTests?.length > 0 ? (
+                                                    <button onClick={() => {
+                                                        setActiveQuizIndex(null);
+                                                        setQuizResult(null);
+                                                        setQuizPhase('idle');
+                                                    }} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"><ArrowLeft size={14} /> Back to Quiz List</button>
+                                                ) : (
+                                                    <button onClick={() => setActiveView({ type: 'video', topicId: activeTopic._id })} className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1"><ArrowLeft size={14} /> Back to video</button>
+                                                )}
                                             </div>
                                             {/* Quiz Content - same as existing quiz tab */}
                                             <div className="min-h-[200px]">
                                                 {/* ─── Quiz Logic (same engine as old quiz tab) ─── */}
                                                 {(() => {
-                                                    const test = topicContent?.mcqTest?.testId;
+                                                    const test = activeQuizIndex !== null ? topicContent?.mcqTests?.[activeQuizIndex]?.testId : topicContent?.mcqTest?.testId;
                                                     const rawQuestions = test?.questions || [];
                                                     const activeQuestions = quizPhase === 'active' ? shuffledQuestions : rawQuestions;
                                                     const q = activeQuestions[currentQIdx];
@@ -1369,12 +1484,93 @@ const CoursePlayer = () => {
                                                         </div>
                                                     );
 
-                                                    if (!topicContent?.mcqTest?.enabled || !test) return (
-                                                        <div className="text-center py-14 text-gray-400">
-                                                            <BookOpen size={44} className="mx-auto mb-3 opacity-30" />
-                                                            <p className="font-medium">No quiz assigned to this lesson.</p>
-                                                        </div>
-                                                    );
+                                                    if (activeQuizIndex === null && topicContent?.mcqTests?.length > 0) {
+                                                         return (
+                                                             <div className="space-y-4">
+                                                                 <div className="flex items-center justify-between">
+                                                                     <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Available Quizzes</h3>
+                                                                     <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-semibold">
+                                                                         {topicContent.mcqTests.length} practice tests
+                                                                     </span>
+                                                                 </div>
+                                                                 <div className="grid gap-4 sm:grid-cols-2">
+                                                                     {topicContent.mcqTests.map((quizItem, idx) => {
+                                                                         const test = quizItem.testId;
+                                                                         if (!test) return null;
+                                                                         const hasAccess = hasTierAccess(quizItem.requiredTier || 'Basic');
+                                                                         
+                                                                         const attempt = (mySubmissions.mcqs || []).find(x => x.testId === test._id || x.testId?._id === test._id);
+                                                                         const scorePct = attempt ? Math.round((attempt.score / (attempt.total || 1)) * 100) : null;
+                                                                         const isPass = scorePct !== null && scorePct >= 75;
+
+                                                                         return (
+                                                                             <div 
+                                                                                 key={idx} 
+                                                                                 onClick={() => {
+                                                                                     if (!hasAccess) {
+                                                                                         toast.error(`Upgrade to ${quizItem.requiredTier} to unlock this quiz`, { icon: '🔒', style: { background: '#1c263c', color: '#fff' } });
+                                                                                         return;
+                                                                                     }
+                                                                                     setActiveQuizIndex(idx);
+                                                                                     setQuizResult(attempt || null);
+                                                                                     setQuizPhase(attempt ? 'submitted' : 'idle');
+                                                                                 }}
+                                                                                 className={`group relative overflow-hidden rounded-2xl p-5 border-2 transition-all cursor-pointer ${
+                                                                                     !hasAccess 
+                                                                                         ? 'border-gray-100 bg-gray-50/50 opacity-75' 
+                                                                                         : isPass 
+                                                                                             ? 'border-emerald-100 bg-emerald-50/30 hover:border-emerald-200' 
+                                                                                             : 'border-slate-100 bg-white hover:border-indigo-200 hover:shadow-md'
+                                                                                 }`}
+                                                                             >
+                                                                                 <div className="flex items-start justify-between">
+                                                                                     <div className="space-y-1.5 pr-6">
+                                                                                         <div className="flex items-center gap-2">
+                                                                                             <span className="text-[10px] font-bold text-slate-400">QUIZ {idx + 1}</span>
+                                                                                             {!hasAccess ? (
+                                                                                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 font-bold uppercase tracking-wider">
+                                                                                                     {quizItem.requiredTier}
+                                                                                                 </span>
+                                                                                             ) : (
+                                                                                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 font-bold uppercase tracking-wider">
+                                                                                                     Unlocked
+                                                                                                 </span>
+                                                                                             )}
+                                                                                         </div>
+                                                                                         <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors text-sm">{test.title}</h4>
+                                                                                         <p className="text-[11px] text-gray-500">{test.questions?.length || 0} Questions • 30s per question</p>
+                                                                                     </div>
+                                                                                     <div className="flex-shrink-0">
+                                                                                         {!hasAccess ? (
+                                                                                             <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                                                                                                 <Lock size={14} />
+                                                                                             </div>
+                                                                                         ) : scorePct !== null ? (
+                                                                                             <div className={`text-right ${isPass ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                                                 <div className="text-sm font-black">{scorePct}%</div>
+                                                                                                 <div className="text-[8px] font-bold uppercase tracking-wider leading-none mt-0.5">{isPass ? 'Passed' : 'Failed'}</div>
+                                                                                             </div>
+                                                                                         ) : (
+                                                                                             <div className="w-8 h-8 rounded-full bg-indigo-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-indigo-600 transition-all">
+                                                                                                 <Play size={13} className="ml-0.5 fill-current" />
+                                                                                             </div>
+                                                                                         )}
+                                                                                     </div>
+                                                                                 </div>
+                                                                             </div>
+                                                                         );
+                                                                     })}
+                                                                 </div>
+                                                             </div>
+                                                         );
+                                                     }
+
+                                                     if (!test || (activeQuizIndex === null && !topicContent?.mcqTest?.enabled)) return (
+                                                         <div className="text-center py-14 text-gray-400">
+                                                             <BookOpen size={44} className="mx-auto mb-3 opacity-30" />
+                                                             <p className="font-medium">No quiz assigned to this lesson.</p>
+                                                         </div>
+                                                     );
 
                                                     const toggleCheckbox = (opt) => {
                                                         setMcqAnswers(prev => {
@@ -1384,8 +1580,15 @@ const CoursePlayer = () => {
                                                         });
                                                     };
 
-                                                    if (mySubmissions.mcq || quizPhase === 'submitted') {
-                                                        const attempt = quizResult || mySubmissions.mcq;
+                                                    const activeTest = activeQuizIndex !== null ? topicContent?.mcqTests?.[activeQuizIndex]?.testId : topicContent?.mcqTest?.testId;
+                                                    const attempt = quizResult || (activeTest ? (mySubmissions.mcqs || []).find(x => {
+                                                        const xId = x.testId?._id?.toString() || x.testId?.toString();
+                                                        const activeId = activeTest._id?.toString() || activeTest.toString();
+                                                        return xId === activeId;
+                                                    }) : null) || (activeQuizIndex === null ? mySubmissions.mcq : null);
+                                                    if (attempt || quizPhase === 'submitted') {
+                                                         
+                                                        
                                                         const score = attempt?.score ?? 0;
                                                         const total = attempt?.total ?? rawQuestions.length;
                                                         const scorePct = Math.round((score / (total || 1)) * 100);
@@ -1417,50 +1620,72 @@ const CoursePlayer = () => {
                                                                         </div>
                                                                     </div>
                                                                     <div className="grid gap-4">
-                                                                        {rawQuestions.map((question, qIdx) => {
-                                                                            const userSelected = answerLookup[question._id] || [];
-                                                                            const correctAnswers = question.correctAnswers || (Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer]) || [];
-                                                                            const isCorrect = userSelected.length === correctAnswers.length && userSelected.every(val => correctAnswers.includes(val));
+                                                                        {(() => {
+                                                                            const questionsWithOrigIndex = rawQuestions.map((q, idx) => ({ ...q, originalIdx: idx }));
+                                                                            const questionsToDisplay = questionsWithOrigIndex.filter(question => {
+                                                                                if (isPass) return true; // Show all if passed
+                                                                                
+                                                                                // If failed, show only incorrect ones
+                                                                                const userSelected = answerLookup[question._id] || [];
+                                                                                const correctAnswers = question.correctAnswers || (Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer]) || [];
+                                                                                const isCorrect = userSelected.length === correctAnswers.length && userSelected.every(val => correctAnswers.includes(val));
+                                                                                return !isCorrect;
+                                                                            });
 
-                                                                            return (
-                                                                                <div key={qIdx} className={`p-5 rounded-2xl border-2 transition-all ${isCorrect ? 'border-emerald-100 bg-emerald-50/30' : 'border-rose-100 bg-rose-50/30'}`}>
-                                                                                    <div className="flex items-start gap-4">
-                                                                                        <div className={`mt-1 shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${isCorrect ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]' : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)]'} text-white`}>
-                                                                                            {isCorrect ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                                                                                        </div>
-                                                                                        <div className="flex-1 min-w-0">
-                                                                                            <p className="font-bold text-gray-800 text-sm leading-relaxed mb-4">{qIdx + 1}. {question.questionText || question.question}</p>
-                                                                                            <div className="grid gap-2">
-                                                                                                {question.options.map((opt, oIdx) => {
-                                                                                                    const isUserChoice = userSelected.includes(opt);
-                                                                                                    const isRightChoice = correctAnswers.includes(opt);
-                                                                                                    let stateClass = "bg-white border-gray-100 text-gray-500";
-                                                                                                    if (isRightChoice) stateClass = "bg-emerald-50 border-emerald-500/50 text-emerald-700 font-bold shadow-sm";
-                                                                                                    else if (isUserChoice) stateClass = "bg-rose-50 border-rose-500/50 text-rose-700 font-bold shadow-sm";
+                                                                            if (questionsToDisplay.length === 0) {
+                                                                                return (
+                                                                                    <div className="text-center py-8 text-gray-500 font-medium">
+                                                                                        No incorrect answers to review.
+                                                                                    </div>
+                                                                                );
+                                                                            }
 
-                                                                                                    return (
-                                                                                                        <div key={oIdx} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${stateClass} text-xs transition-all`}>
-                                                                                                            <span className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-lg ${isRightChoice ? 'bg-emerald-500 text-white' : isUserChoice ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-400'} text-[10px] font-black`}>{String.fromCharCode(65 + oIdx)}</span>
-                                                                                                            <span className="flex-1">{opt}</span>
-                                                                                                            {isRightChoice && (
-                                                                                                                <span className="ml-auto flex items-center gap-1.5 bg-emerald-100/50 px-2 py-1 rounded-md text-[8px] font-black uppercase text-emerald-700 tracking-widest whitespace-nowrap border border-emerald-200">
-                                                                                                                    <CheckCircle size={10} /> Correct Answer
-                                                                                                                </span>
-                                                                                                            )}
-                                                                                                            {!isRightChoice && isUserChoice && (
-                                                                                                                <span className="ml-auto flex items-center gap-1.5 bg-rose-100/50 px-2 py-1 rounded-md text-[8px] font-black uppercase text-rose-700 tracking-widest whitespace-nowrap border border-rose-200">
-                                                                                                                    <XCircle size={10} /> Your Choice
-                                                                                                                </span>
-                                                                                                            )}
-                                                                                                        </div>
-                                                                                                    );
-                                                                                                })}
+                                                                            return questionsToDisplay.map((question) => {
+                                                                                const qIdx = question.originalIdx;
+                                                                                const userSelected = answerLookup[question._id] || [];
+                                                                                const correctAnswers = question.correctAnswers || (Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer]) || [];
+                                                                                const isCorrect = userSelected.length === correctAnswers.length && userSelected.every(val => correctAnswers.includes(val));
+
+                                                                                return (
+                                                                                    <div key={qIdx} className={`p-5 rounded-2xl border-2 transition-all ${isCorrect ? 'border-emerald-100 bg-emerald-50/30' : 'border-rose-100 bg-rose-50/30'}`}>
+                                                                                        <div className="flex items-start gap-4">
+                                                                                            <div className={`mt-1 shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${isCorrect ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]' : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)]'} text-white`}>
+                                                                                                {isCorrect ? <CheckCircle size={18} /> : <XCircle size={18} />}
+                                                                                            </div>
+                                                                                            <div className="flex-1 min-w-0">
+                                                                                                <p className="font-bold text-gray-800 text-sm leading-relaxed mb-4">{qIdx + 1}. {question.questionText || question.question}</p>
+                                                                                                <div className="grid gap-2">
+                                                                                                    {question.options.map((opt, oIdx) => {
+                                                                                                        const isUserChoice = userSelected.includes(opt);
+                                                                                                        const isRightChoice = correctAnswers.includes(opt);
+                                                                                                        let stateClass = "bg-white border-gray-100 text-gray-500";
+                                                                                                        if (isRightChoice) stateClass = "bg-emerald-50 border-emerald-500/50 text-emerald-700 font-bold shadow-sm";
+                                                                                                        else if (isUserChoice) stateClass = "bg-rose-50 border-rose-500/50 text-rose-700 font-bold shadow-sm";
+
+                                                                                                        return (
+                                                                                                            <div key={oIdx} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${stateClass} text-xs transition-all`}>
+                                                                                                                <span className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-lg ${isRightChoice ? 'bg-emerald-500 text-white' : isUserChoice ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-400'} text-[10px] font-black`}>{String.fromCharCode(65 + oIdx)}</span>
+                                                                                                                <span className="flex-1">{opt}</span>
+                                                                                                                {isRightChoice && (
+                                                                                                                    <span className="ml-auto flex items-center gap-1.5 bg-emerald-100/50 px-2 py-1 rounded-md text-[8px] font-black uppercase text-emerald-700 tracking-widest whitespace-nowrap border border-emerald-200">
+                                                                                                                        <CheckCircle size={10} /> Correct Answer
+                                                                                                                    </span>
+                                                                                                                )}
+                                                                                                                {!isRightChoice && isUserChoice && (
+                                                                                                                    <span className="ml-auto flex items-center gap-1.5 bg-rose-100/50 px-2 py-1 rounded-md text-[8px] font-black uppercase text-rose-700 tracking-widest whitespace-nowrap border border-rose-200">
+                                                                                                                        <XCircle size={10} /> Your Choice
+                                                                                                                    </span>
+                                                                                                                )}
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    })}
+                                                                                                </div>
                                                                                             </div>
                                                                                         </div>
                                                                                     </div>
-                                                                                </div>
-                                                                            );
-                                                                        })}
+                                                                                );
+                                                                            });
+                                                                        })()}
                                                                     </div>
                                                                 </div>
                                                                 {!isPass && (<button onClick={retakeQuiz} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-100"><RotateCcw size={20} /> Try Again to Pass</button>)}
@@ -1542,11 +1767,19 @@ const CoursePlayer = () => {
                                                     <div className="text-center py-10 text-gray-400"><FileText size={40} className="mx-auto mb-3 opacity-40" /><p>No documents for this lesson.</p></div>
                                                 ) : (
                                                     topicContent.assignments.map((assign, idx) => {
-                                                        const isDone = progress[activeTopic._id]?.assignmentCompleted;
+                                                        const isDone = progress[activeTopic._id]?.completedAssignments?.includes(assign._id);
+                                                         const hasAccess = hasTierAccess(assign.requiredTier || 'Basic');
                                                         return (
-                                                            <div key={idx} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:border-indigo-200 transition-colors">
+                                                            <div key={idx} className={`bg-white border rounded-xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group transition-colors ${!hasAccess ? 'border-gray-100 bg-gray-50/50' : 'border-gray-200 hover:border-indigo-200'}`}>
                                                                 <div className="min-w-0">
-                                                                    <h4 className="font-semibold text-gray-800 truncate">{assign.title}</h4>
+                                                                    <div className="flex items-center flex-wrap gap-1">
+                                                                         <h4 className="font-semibold text-gray-800 truncate">{assign.title}</h4>
+                                                                         {!hasAccess && (
+                                                                             <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                                                                                 {assign.requiredTier}
+                                                                             </span>
+                                                                         )}
+                                                                     </div>
                                                                     <div className="flex items-center gap-2 mt-2">
                                                                         <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-bold uppercase tracking-widest">Document</span>
                                                                         {isDone && (
@@ -1557,24 +1790,36 @@ const CoursePlayer = () => {
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                                                                    {assign.questionUrl && (
+                                                                    {!hasAccess ? (
                                                                         <button
-                                                                            onClick={() => setSelectedDocument(assign)}
-                                                                            className="flex-1 sm:flex-none px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-sm font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
+                                                                            onClick={() => toast.error(`Upgrade to ${assign.requiredTier} to unlock this document`, { icon: '🔒', style: { background: '#1c263c', color: '#fff' } })}
+                                                                            className="flex-1 sm:flex-none px-4 py-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg text-sm font-bold hover:bg-amber-100 transition-all shadow-sm flex items-center justify-center gap-2"
                                                                         >
-                                                                            <FileText size={16} /> Open
+                                                                            <Lock size={15} /> Locked
                                                                         </button>
-                                                                    )}
-                                                                    {!isDone && (
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                autoMarkTopicComplete(activeTopic._id, 'assignment');
-                                                                                toast.success('Document marked as completed!');
-                                                                            }}
-                                                                            className="flex-1 sm:flex-none px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-sm font-bold hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
-                                                                        >
-                                                                            <CheckCircle size={16} /> Mark Done
-                                                                        </button>
+                                                                    ) : (
+                                                                        <>
+                                                                            {assign.questionUrl && (
+                                                                                <button
+                                                                                    onClick={() => setSelectedDocument(assign)}
+                                                                                    className="flex-1 sm:flex-none px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-sm font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
+                                                                                >
+                                                                                    <FileText size={16} /> Open
+                                                                                </button>
+                                                                            )}
+                                                                            {!isDone && (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        autoMarkTopicComplete(activeTopic._id, 'assignment', true, assign._id);
+                                                                                        toast.success('Document marked as completed!');
+                                                                                        fireSuccessBlast();
+                                                                                    }}
+                                                                                    className="flex-1 sm:flex-none px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-sm font-bold hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
+                                                                                >
+                                                                                    <CheckCircle size={16} /> Mark Done
+                                                                                </button>
+                                                                            )}
+                                                                        </>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -1607,25 +1852,96 @@ const CoursePlayer = () => {
                                                     <div className="space-y-3">
                                                         <h3 className="font-semibold text-gray-800 mb-4">Lesson Materials</h3>
                                                         {activeTopic.notes && activeTopic.notes.length > 0 ? (
-                                                            activeTopic.notes.map((note, idx) => (note.type === 'google_doc' || note.type === 'google_ppt') ? (
-                                                                <div key={idx} className="mt-4 space-y-4">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex items-center gap-3"><div className={`p-2 rounded-lg ${note.type === 'google_ppt' ? 'bg-orange-50 text-orange-600' : 'bg-indigo-50 text-indigo-600'}`}><Globe size={20} /></div><div><p className="font-bold text-slate-800 leading-none">{note.name || `Note ${idx + 1}`}</p><p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">{note.type === 'google_ppt' ? 'Presentation Preview' : 'Document Preview'}</p></div></div>
-                                                                        <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-md border border-amber-100"><Lock size={12} /><span className="text-[10px] font-bold uppercase">View Only</span></div>
-                                                                    </div>
-                                                                    <div className={`relative w-full ${note.type === 'google_ppt' ? 'aspect-video' : 'h-[600px]'} bg-slate-100 rounded-2xl ${note.type === 'google_ppt' ? 'overflow-hidden' : 'overflow-y-auto'} border border-slate-200 shadow-inner select-none`} onContextMenu={(e) => e.preventDefault()}>
-                                                                        <div className={`${note.type === 'google_ppt' ? 'w-full h-full' : 'pointer-events-none w-full'}`}>
-                                                                            <iframe src={(() => { try { let url = note.url; if (note.type === 'google_ppt') { if (url.includes('/edit')) url = url.split('/edit')[0] + '/embed'; else if (url.includes('/view')) url = url.split('/view')[0] + '/embed'; else if (!url.includes('/embed')) { url = url.endsWith('/') ? url + 'embed' : url + '/embed'; } } else { if (url.includes('/edit')) url = url.split('/edit')[0] + '/preview'; else if (url.includes('/view')) url = url.split('/view')[0] + '/preview'; else if (!url.includes('/preview')) { url = url.endsWith('/') ? url + 'preview' : url + '/preview'; } } return url; } catch (e) { return note.url; } })()} className={`${note.type === 'google_ppt' ? 'w-full h-full border-none' : 'w-full h-[12000px] border-none'}`} title={note.name} allowFullScreen={note.type === 'google_ppt'} loading="lazy"></iframe>
+                                                            activeTopic.notes.map((note, idx) => {
+                                                                const hasAccess = hasTierAccess(note.requiredTier || 'Basic');
+                                                                if (note.type === 'google_doc' || note.type === 'google_ppt') {
+                                                                    return (
+                                                                        <div key={idx} className="mt-4 space-y-4">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <div className={`p-2 rounded-lg ${note.type === 'google_ppt' ? 'bg-orange-50 text-orange-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                                                        <Globe size={20} />
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <p className="font-bold text-slate-800 leading-none">{note.name || `Note ${idx + 1}`}</p>
+                                                                                            {!hasAccess && (
+                                                                                                <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 rounded-md text-[9px] font-bold uppercase tracking-wider ml-1">
+                                                                                                    {note.requiredTier}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">
+                                                                                            {note.type === 'google_ppt' ? 'Presentation Preview' : 'Document Preview'}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+                                                                                {hasAccess ? (
+                                                                                    <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-md border border-amber-100">
+                                                                                        <Lock size={12} />
+                                                                                        <span className="text-[10px] font-bold uppercase">View Only</span>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded-md border border-red-100">
+                                                                                        <Lock size={12} />
+                                                                                        <span className="text-[10px] font-bold uppercase">{note.requiredTier} Lock</span>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="relative w-full aspect-video md:h-[600px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner select-none" onContextMenu={(e) => e.preventDefault()}>
+                                                                                {hasAccess ? (
+                                                                                    <iframe src={(() => { try { let url = note.url; if (note.type === 'google_ppt') { if (url.includes('/edit')) url = url.split('/edit')[0] + '/embed'; else if (url.includes('/view')) url = url.split('/view')[0] + '/embed'; else if (!url.includes('/embed')) { url = url.endsWith('/') ? url + 'embed' : url + '/embed'; } } else { if (url.includes('/edit')) url = url.split('/edit')[0] + '/preview'; else if (url.includes('/view')) url = url.split('/view')[0] + '/preview'; else if (!url.includes('/preview')) { url = url.endsWith('/') ? url + 'preview' : url + '/preview'; } } return url; } catch (e) { return note.url; } })()} className="w-full h-full border-none" title={note.name} allowFullScreen={note.type === 'google_ppt'} loading="lazy"></iframe>
+                                                                                ) : (
+                                                                                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 space-y-3 z-20">
+                                                                                        <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                                                                                            <Lock size={28} />
+                                                                                        </div>
+                                                                                        <h4 className="text-white font-extrabold text-lg">Gated Premium Material</h4>
+                                                                                        <p className="text-slate-400 text-sm max-w-md">Upgrade your subscription to the <span className="text-amber-400 font-bold uppercase">{note.requiredTier}</span> tier to unlock this resource and power up your learning journey.</p>
+                                                                                        <button onClick={() => toast.error(`Upgrade to ${note.requiredTier} to unlock this material`, { icon: '🔒', style: { background: '#1c263c', color: '#fff' } })} className="px-5 py-2.5 bg-amber-500 text-slate-950 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-amber-400 transition-all shadow-lg">Upgrade Now</button>
+                                                                                    </div>
+                                                                                )}
+                                                                                {hasAccess && (
+                                                                                    <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-white/90 backdrop-blur shadow-sm px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 font-bold text-[10px] uppercase pointer-events-none">
+                                                                                        <ShieldCheck size={12} className={note.type === 'google_ppt' ? 'text-orange-600' : 'text-indigo-600'} />
+                                                                                        Protected Content
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
-                                                                        <div className={`${note.type === 'google_ppt' ? 'absolute' : 'sticky'} top-4 right-4 z-10 flex items-center gap-1.5 bg-white/90 backdrop-blur shadow-sm px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 font-bold text-[10px] uppercase pointer-events-none`}><ShieldCheck size={12} className={note.type === 'google_ppt' ? 'text-orange-600' : 'text-indigo-600'} />Protected Content</div>
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <div key={idx} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:border-indigo-200 transition-colors">
-                                                                    <div className="flex items-center gap-3"><div className="p-2 bg-red-50 text-red-600 rounded-lg"><FileText size={20} /></div><div><p className="font-medium text-gray-700 line-clamp-1">{note.name || `Note ${idx + 1}`}</p><p className="text-xs text-gray-400">PDF Document</p></div></div>
-                                                                    <a href={note.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"><Download size={16} /> Download</a>
-                                                                </div>
-                                                            ))
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <div key={idx} className={`flex items-center justify-between p-4 bg-white border rounded-xl transition-colors ${!hasAccess ? 'border-gray-100 bg-gray-50/50' : 'border-gray-200 hover:border-indigo-200'}`}>
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className="p-2 bg-red-50 text-red-600 rounded-lg">
+                                                                                    <FileText size={20} />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <p className="font-medium text-gray-700 line-clamp-1">{note.name || `Note ${idx + 1}`}</p>
+                                                                                        {!hasAccess && (
+                                                                                            <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                                                                                                {note.requiredTier}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <p className="text-xs text-gray-400">PDF Document</p>
+                                                                                </div>
+                                                                            </div>
+                                                                            {hasAccess ? (
+                                                                                <a href={note.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100">
+                                                                                    <Download size={16} /> Download
+                                                                                </a>
+                                                                            ) : (
+                                                                                <button onClick={() => toast.error(`Upgrade to ${note.requiredTier} to download this PDF document`, { icon: '🔒', style: { background: '#1c263c', color: '#fff' } })} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition-all">
+                                                                                    <Lock size={15} /> Locked
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                            })
                                                         ) : (
                                                             <div className="text-gray-500 italic p-4 bg-gray-50 rounded-lg text-sm text-center">No notes attached to this lesson.</div>
                                                         )}

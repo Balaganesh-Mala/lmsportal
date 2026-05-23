@@ -32,6 +32,10 @@ const ProgressSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  completedAssignments: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Assignment'
+  }],
   watchedDuration: {
     type: Number,
     default: 0

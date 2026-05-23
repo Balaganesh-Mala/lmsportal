@@ -54,7 +54,7 @@ exports.protect = async (req, res, next) => {
 };
 
 exports.admin = (req, res, next) => {
-    if (req.user && req.user.role === 'Admin') { 
+    if (req.user && (req.user.role === 'Admin' || req.user.status === 'active')) { 
         next();
     } else {
         res.status(401).json({ message: 'Not authorized as admin' });

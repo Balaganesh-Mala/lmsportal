@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 
 const Meetings = () => {
     const [meetings, setMeetings] = useState([]);
+    const [trainers, setTrainers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -15,12 +16,15 @@ const Meetings = () => {
         time: '',
         link: ''
     });
+    const [inviteAll, setInviteAll] = useState(true);
+    const [selectedAttendees, setSelectedAttendees] = useState([]);
     const [submitting, setSubmitting] = useState(false);
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
     useEffect(() => {
         fetchMeetings();
+        fetchTrainers();
     }, []);
 
     const fetchMeetings = async () => {
@@ -35,6 +39,16 @@ const Meetings = () => {
         }
     };
 
+    const fetchTrainers = async () => {
+        try {
+            const res = await axios.get(`${API_URL}/api/admin/trainers/list`);
+            // Show only active staff
+            setTrainers(res.data.filter(t => t.status === 'active'));
+        } catch (error) {
+            console.error("Failed to fetch trainers", error);
+        }
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -44,10 +58,16 @@ const Meetings = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            await axios.post(`${API_URL}/api/admin/meetings`, formData);
+            const payload = {
+                ...formData,
+                attendees: inviteAll ? ['ALL'] : selectedAttendees
+            };
+            await axios.post(`${API_URL}/api/admin/meetings`, payload);
             toast.success("Meeting scheduled and trainers notified!");
             setIsModalOpen(false);
             setFormData({ title: '', description: '', date: '', time: '', link: '' });
+            setInviteAll(true);
+            setSelectedAttendees([]);
             fetchMeetings();
         } catch (error) {
             console.error("Failed to schedule meeting", error);
@@ -137,8 +157,20 @@ const Meetings = () => {
                             </div>
                         </div>
                         <div className="bg-gray-50 px-5 py-3 border-t border-gray-100 flex items-center text-xs text-gray-500">
-                            <Users className="mr-1 h-3 w-3" />
-                            All Trainers Invited
+                            <Users className="mr-1.5 h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">
+                                {meeting.attendees?.includes('ALL') 
+                                    ? 'All Staff Invited' 
+                                    : (() => {
+                                        const names = meeting.attendees
+                                            ?.map(id => trainers.find(t => t._id === id)?.name)
+                                            .filter(Boolean);
+                                        return names && names.length > 0 
+                                            ? `Invited: ${names.join(', ')}` 
+                                            : 'No attendees selected';
+                                      })()
+                                }
+                            </span>
                         </div>
                     </div>
                 ))}
@@ -208,6 +240,50 @@ const Meetings = () => {
                                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                     />
                                 </div>
+                            </div>
+
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Attendees / Share With</label>
+                                <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={inviteAll}
+                                        onChange={(e) => setInviteAll(e.target.checked)}
+                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                    />
+                                    <span className="text-sm text-gray-600 font-medium">Invite All Staff (Trainers & Sub-Admins)</span>
+                                </label>
+
+                                {!inviteAll && (
+                                    <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-gray-50 border-gray-200">
+                                        {trainers.map((t) => {
+                                            const isChecked = selectedAttendees.includes(t._id);
+                                            return (
+                                                <label key={t._id} className="flex items-center gap-2.5 cursor-pointer text-sm py-0.5 hover:bg-gray-100 rounded px-1.5 transition-colors w-full">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => {
+                                                            if (isChecked) {
+                                                                setSelectedAttendees(selectedAttendees.filter(id => id !== t._id));
+                                                            } else {
+                                                                setSelectedAttendees([...selectedAttendees, t._id]);
+                                                            }
+                                                        }}
+                                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-gray-800 leading-tight">{t.name}</span>
+                                                        <span className="text-[10px] text-gray-400 font-semibold uppercase">{t.role || 'Trainer'}</span>
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                        {trainers.length === 0 && (
+                                            <p className="text-xs text-gray-400 italic text-center py-2">No active trainers or sub-admins found.</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div>

@@ -79,7 +79,8 @@ exports.createTopic = async (req, res) => {
                             topicData.notes.push({
                                 url: note.url,
                                 name: note.name,
-                                type: note.type || 'google_doc'
+                                type: note.type || 'google_doc',
+                                requiredTier: note.requiredTier || 'Basic'
                             });
                         }
                     });
@@ -172,7 +173,8 @@ exports.updateTopic = async (req, res) => {
                             topic.notes.push({
                                 url: note.url,
                                 name: note.name,
-                                type: note.type || 'google_doc'
+                                type: note.type || 'google_doc',
+                                requiredTier: note.requiredTier || 'Basic'
                             });
                         }
                     });

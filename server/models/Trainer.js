@@ -75,16 +75,12 @@ const trainerSchema = new mongoose.Schema({
     },
     access: {
         dashboard: { type: Boolean, default: true },
-        classes: { type: Boolean, default: true },
-        students: { type: Boolean, default: true },
-        attendance: { type: Boolean, default: true },
-        materials: { type: Boolean, default: true },
-        submissions: { type: Boolean, default: true },
-        mockInterview: { type: Boolean, default: true },
-        comments: { type: Boolean, default: true },
-        analytics: { type: Boolean, default: true },
-        myQR: { type: Boolean, default: true },
-        profile: { type: Boolean, default: true }
+        studentsManagement: { type: Boolean, default: true },
+        coursesLearning: { type: Boolean, default: true },
+        finance: { type: Boolean, default: false },
+        marketingWebsite: { type: Boolean, default: false },
+        communication: { type: Boolean, default: false },
+        settings: { type: Boolean, default: false }
     },
     createdAt: {
         type: Date,

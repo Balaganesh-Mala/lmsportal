@@ -18,14 +18,7 @@ const findBalaganesh = async () => {
     try {
         const student = await Student.findOne({ name: /Balaganesh/i });
         if (student) {
-            console.log('Found Balaganesh:', {
-                id: student._id,
-                name: student.name,
-                email: student.email,
-                currentStreak: student.currentStreak,
-                highestStreak: student.highestStreak,
-                lastActiveDate: student.lastActiveDate
-            });
+            console.log('Found Balaganesh:', student);
         } else {
             console.log('Balaganesh Mala not found by name filter.');
         }

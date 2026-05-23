@@ -12,18 +12,26 @@ const TopicContentSchema = new mongoose.Schema({
         testId: { type: mongoose.Schema.Types.ObjectId, ref: 'HiringTest', default: null },
         enabled: { type: Boolean, default: false }
     },
+    // Support multiple MCQs
+    mcqTests: [{
+        testId: { type: mongoose.Schema.Types.ObjectId, ref: 'HiringTest', default: null },
+        enabled: { type: Boolean, default: true },
+        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum'], default: 'Basic' }
+    }],
     // Tasks (text/file-based challenges)
     tasks: [{
         title: { type: String, required: true },
         description: { type: String, default: '' },
         fileUrl: { type: String, default: '' },    // optional resource file
-        filePublicId: { type: String, default: '' }
+        filePublicId: { type: String, default: '' },
+        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum'], default: 'Basic' }
     }],
     // Assignments (PDF question, students upload answer)
     assignments: [{
         title: { type: String, required: true },
         questionUrl: { type: String, default: '' },    // question PDF
-        questionPublicId: { type: String, default: '' }
+        questionPublicId: { type: String, default: '' },
+        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum'], default: 'Basic' }
     }]
 }, { timestamps: true });
 

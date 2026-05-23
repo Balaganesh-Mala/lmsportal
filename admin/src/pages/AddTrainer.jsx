@@ -22,16 +22,12 @@ const AddTrainer = () => {
         bio: '',
         access: {
             dashboard: true,
-            classes: true,
-            students: true,
-            attendance: true,
-            materials: true,
-            submissions: true,
-            mockInterview: true,
-            comments: true,
-            analytics: true,
-            myQR: true,
-            profile: true
+            studentsManagement: true,
+            coursesLearning: true,
+            finance: false,
+            marketingWebsite: false,
+            communication: false,
+            settings: false
         },
         photo: ''
     });
@@ -57,7 +53,7 @@ const AddTrainer = () => {
                     });
                     
                     // Check if role is custom
-                    const standardRoles = ['Trainer']; // We also fetch course roles dynamically
+                    const standardRoles = ['Trainer', 'Sub-Admin']; // We also fetch course roles dynamically
                     setIsCustomRole(!standardRoles.includes(trainer.role) && !trainer.role.includes('Trainer'));
                 } catch (err) {
                     console.error('Failed to fetch trainer:', err);
@@ -181,7 +177,8 @@ const AddTrainer = () => {
                                     onChange={handleChange}
                                     className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
                                 >
-
+                                    <option value="Trainer">Trainer</option>
+                                    <option value="Sub-Admin">Sub-Admin</option>
                                     {courses.length > 0 && <optgroup label="Course Specific">
                                         {courses.map(c => (
                                             <option key={c._id} value={`${c.title} Trainer`}>{c.title} Trainer</option>
@@ -244,23 +241,34 @@ const AddTrainer = () => {
                     <section>
                         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs">3</span>
-                            Feature Access
+                            Feature Access / Permissions (Sidebar Tabs)
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {Object.keys(formData.access).map(key => (
-                                <label key={key} className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none ${formData.access[key] ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.access[key] ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'}`}>
-                                        {formData.access[key] && <Check size={14} className="text-white" />}
-                                    </div>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.access[key]}
-                                        onChange={() => setFormData({ ...formData, access: { ...formData.access, [key]: !formData.access[key] } })}
-                                        className="hidden"
-                                    />
-                                    <span className="text-sm font-medium text-gray-700 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                                </label>
-                            ))}
+                            {Object.keys(formData.access).map(key => {
+                                const friendlyLabels = {
+                                    dashboard: 'Dashboard',
+                                    studentsManagement: 'Students Management',
+                                    coursesLearning: 'Courses & Learning',
+                                    finance: 'Finance',
+                                    marketingWebsite: 'Marketing & Website',
+                                    communication: 'Communication',
+                                    settings: 'Settings'
+                                };
+                                return (
+                                    <label key={key} className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none ${formData.access[key] ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.access[key] ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'}`}>
+                                            {formData.access[key] && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.access[key]}
+                                            onChange={() => setFormData({ ...formData, access: { ...formData.access, [key]: !formData.access[key] } })}
+                                            className="hidden"
+                                        />
+                                        <span className="text-sm font-medium text-gray-700">{friendlyLabels[key] || key}</span>
+                                    </label>
+                                );
+                            })}
                         </div>
                     </section>
 

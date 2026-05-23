@@ -4,6 +4,8 @@ const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
 const { protect, admin } = require('../middleware/authMiddleware');
 
+const Trainer = require('../models/Trainer');
+
 // @desc    Admin Login
 // @route   POST /api/admin/login
 // @access  Public
@@ -12,10 +14,20 @@ router.post('/login', async (req, res) => {
         const { email, password } = req.body;
 
         // Check for Admin
-        const admin = await Admin.findOne({ email }).select('+password');
+        let admin = await Admin.findOne({ email }).select('+password');
+        let isTrainer = false;
+        let userRole = 'Admin';
+        let userAccess = null;
 
         if (!admin) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            // Check for Trainer / Sub-Admin (must be active status)
+            admin = await Trainer.findOne({ email, status: 'active' });
+            if (!admin) {
+                return res.status(401).json({ message: 'Invalid credentials' });
+            }
+            isTrainer = true;
+            userRole = admin.role || 'Sub-Admin';
+            userAccess = admin.access;
         }
 
         // Check password
@@ -26,7 +38,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Create Token
-        const token = jwt.sign({ id: admin._id, role: 'Admin' }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: admin._id, role: userRole }, process.env.JWT_SECRET, {
             expiresIn: '30d'
         });
 
@@ -37,7 +49,8 @@ router.post('/login', async (req, res) => {
                 _id: admin._id,
                 name: admin.name,
                 email: admin.email,
-                role: admin.role
+                role: userRole,
+                access: userAccess
             }
         });
     } catch (err) {

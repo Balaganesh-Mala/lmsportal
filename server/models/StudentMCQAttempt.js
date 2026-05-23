@@ -35,7 +35,7 @@ const StudentMCQAttemptSchema = new mongoose.Schema({
     }
 });
 
-// One attempt per student per topic (can be updated on re-attempt if needed)
-StudentMCQAttemptSchema.index({ studentId: 1, topicId: 1 }, { unique: true });
+// One attempt per student per topic per test (can be updated on re-attempt if needed)
+StudentMCQAttemptSchema.index({ studentId: 1, topicId: 1, testId: 1 }, { unique: true });
 
 module.exports = mongoose.model('StudentMCQAttempt', StudentMCQAttemptSchema);

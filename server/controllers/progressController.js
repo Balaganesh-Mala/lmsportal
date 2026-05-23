@@ -10,7 +10,7 @@ const TopicContent = require('../models/TopicContent');
 // @access  Student
 exports.updateProgress = async (req, res) => {
     try {
-        const { studentId, courseId, topicId, completed, watchedDuration, videoCompleted, quizCompleted, assignmentCompleted } = req.body;
+        const { studentId, courseId, topicId, completed, watchedDuration, videoCompleted, quizCompleted, assignmentCompleted, assignmentId } = req.body;
 
         if (!studentId || !topicId || !courseId) {
             return res.status(400).json({ message: 'Missing required fields' });
@@ -29,12 +29,24 @@ exports.updateProgress = async (req, res) => {
             if (videoCompleted !== undefined) progress.videoCompleted = videoCompleted;
             if (quizCompleted !== undefined) progress.quizCompleted = quizCompleted;
             if (assignmentCompleted !== undefined) progress.assignmentCompleted = assignmentCompleted;
+            
+            if (assignmentId) {
+                if (!progress.completedAssignments) progress.completedAssignments = [];
+                if (!progress.completedAssignments.includes(assignmentId)) {
+                    progress.completedAssignments.push(assignmentId);
+                }
+                progress.assignmentCompleted = true; // Auto-mark overall assignment completed to support progress stats
+            }
+            
             if (watchedDuration !== undefined) progress.watchedDuration = watchedDuration;
             if (completed && !progress.completedAt) progress.completedAt = Date.now();
         } else {
             if (completed) {
                 shouldAwardPoints = true;
             }
+            
+            const completedAssignments = assignmentId ? [assignmentId] : [];
+            
             progress = new Progress({
                 studentId,
                 courseId,
@@ -42,7 +54,8 @@ exports.updateProgress = async (req, res) => {
                 completed: completed || false,
                 videoCompleted: videoCompleted || false,
                 quizCompleted: quizCompleted || false,
-                assignmentCompleted: assignmentCompleted || false,
+                assignmentCompleted: assignmentCompleted || (assignmentId ? true : false),
+                completedAssignments,
                 watchedDuration: watchedDuration || 0,
                 completedAt: completed ? Date.now() : undefined
             });

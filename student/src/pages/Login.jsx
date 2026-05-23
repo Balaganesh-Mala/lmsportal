@@ -1,8 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { User, Eye, EyeOff, ArrowLeft, Lock, Star, Quote, Users, TrendingUp, Calendar } from 'lucide-react';
+import { Mail, Eye, EyeOff, Lock, Star, Quote, Users, TrendingUp, Calendar, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+
+// Deterministic dynamic enrollments calculator
+const getDynamicStats = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const mins = now.getMinutes();
+    const daySeed = now.getDate() + now.getMonth() * 31 + now.getFullYear();
+    const todayBase = 10 + (daySeed % 5);
+    const todayMax = 50 + (daySeed % 11);
+    const dayProgress = (hours * 60 + mins) / 1440;
+    const todayJoined = Math.floor(todayBase + (todayMax - todayBase) * dayProgress);
+    const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const weekBase = 314 + (daySeed % 15);
+    const thisWeek = weekBase + (dayOfWeek * 35) + todayJoined;
+    const dayOfMonth = now.getDate();
+    const monthBase = 1160 + (daySeed % 40);
+    const thisMonth = monthBase + (dayOfMonth * 42) + todayJoined;
+    const startDate = new Date('2026-01-01');
+    const diffDays = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24));
+    const totalStudents = 50000 + (diffDays * 85) + todayJoined;
+    return { today: todayJoined, week: thisWeek, month: thisMonth, total: totalStudents };
+};
+
+
 
 const Login = () => {
     const navigate = useNavigate();
@@ -12,447 +36,345 @@ const Login = () => {
     const [error, setError] = useState('');
     const [reviews, setReviews] = useState([]);
     const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
-    const [joinCounts, setJoinCounts] = useState({
-        today: 0,
-        week: 0,
-        month: 0
-    });
-
-    useEffect(() => {
-        if (location.state?.error) {
-            setError(location.state.error);
-            // Clear the error from state so it doesn't persist on refresh
-            window.history.replaceState(null, '');
-        }
-    }, [location]);
-
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-
+    const [joinCounts, setJoinCounts] = useState({ today: 0, week: 0, month: 0, total: 0 });
+    const [formData, setFormData] = useState({ email: '', password: '' });
     const [settings, setSettings] = useState(null);
-
-    useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const { data } = await axios.get(`${API_URL}/api/settings`);
-                setSettings(data);
-            } catch (error) {
-                console.error("Failed to fetch settings:", error);
-            }
-        };
-
-        const fetchReviews = async () => {
-            try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const { data } = await axios.get(`${API_URL}/api/reviews?isApproved=true&limit=5`);
-                if (data.success && data.data.length > 0) {
-                    setReviews(data.data);
-                } else {
-                    // Fallback reviews if none in DB
-                    setReviews([
-                        { studentName: "Arjun Mehta", role: "Software Engineer", reviewText: "The best learning platform for modern tech stack. The mentors are top-notch!", rating: 5, courseTaken: "Full Stack Development" },
-                        { studentName: "Priya Sharma", role: "UI/UX Designer", reviewText: "Incredible curriculum! I went from zero to a job in 6 months.", rating: 5, courseTaken: "Design Masters" },
-                        { studentName: "Karthik R.", role: "Data Scientist", reviewText: "Very structured and easy to follow. Highly recommended!", rating: 4, courseTaken: "Data Science Boot Camp" }
-                    ]);
-                }
-            } catch (error) {
-                console.error("Failed to fetch reviews:", error);
-            }
-        };
-
-        // Generate random join counts
-        setJoinCounts({
-            today: Math.floor(Math.random() * (45 - 12 + 1)) + 12,
-            week: Math.floor(Math.random() * (320 - 150 + 1)) + 150,
-            month: Math.floor(Math.random() * (1200 - 800 + 1)) + 800
-        });
-
-        fetchSettings();
-        fetchReviews();
-    }, []);
-
-    // Carousel Timer
-    useEffect(() => {
-        if (reviews.length === 0) return;
-        const timer = setInterval(() => {
-            setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
-        }, 5000);
-        return () => clearInterval(timer);
-    }, [reviews]);
-
-    // Forgot Password States
     const [showForgotModal, setShowForgotModal] = useState(false);
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotLoading, setForgotLoading] = useState(false);
     const [forgotStatus, setForgotStatus] = useState({ success: false, message: '' });
 
+    useEffect(() => {
+        if (location.state?.error) {
+            setError(location.state.error);
+            window.history.replaceState(null, '');
+        }
+    }, [location]);
+
+    useEffect(() => {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        axios.get(`${API_URL}/api/settings`).then(r => setSettings(r.data)).catch(() => { });
+        axios.get(`${API_URL}/api/reviews?isApproved=true&limit=6`).then(r => {
+            if (r.data.success && r.data.data.length > 0) setReviews(r.data.data);
+            else setReviews([
+                { studentName: 'Aravind Swamy', role: 'Investment Analyst @ Goldman Sachs', reviewText: 'This course completely changed my career trajectory. The financial modeling modules were critical in cracking my technical interviews!', rating: 5, courseTaken: 'Investment Banking Elite' },
+                { studentName: 'Meera Deshmukh', role: 'Software Engineer @ Morgan Stanley', reviewText: 'The project-based learning is exceptional. The layout and Course Player features allowed me to learn at my own pace.', rating: 5, courseTaken: 'Full Stack Financial Systems' },
+                { studentName: 'Rahul Varma', role: 'Risk Consultant @ PwC', reviewText: 'Outstanding mentorship! The assignments and mock quiz setup made the actual certifications a walk in the park.', rating: 5, courseTaken: 'Advanced Risk Management' },
+            ]);
+        }).catch(() => { });
+        setJoinCounts(getDynamicStats());
+    }, []);
+
+    useEffect(() => {
+        if (!reviews.length) return;
+        const t = setInterval(() => setCurrentReviewIndex(p => (p + 1) % reviews.length), 5000);
+        return () => clearInterval(t);
+    }, [reviews]);
+
     const handleForgotPassword = async (e) => {
         e.preventDefault();
         setForgotLoading(true);
         setForgotStatus({ success: false, message: '' });
-
         try {
             const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             const res = await axios.post(`${API_URL}/api/students/request-reset`, { email: forgotEmail });
-
-            if (res.data.success) {
-                setForgotStatus({ success: true, message: 'Reset link sent! Check your inbox.' });
-                setForgotEmail(''); // Clear input on success
-            }
+            if (res.data.success) { setForgotStatus({ success: true, message: 'Reset link sent! Check your inbox.' }); setForgotEmail(''); }
         } catch (err) {
-            setForgotStatus({
-                success: false,
-                message: err.response?.data?.message || 'Failed to send reset link. Try again.'
-            });
-        } finally {
-            setForgotLoading(false);
-        }
+            setForgotStatus({ success: false, message: err.response?.data?.message || 'Failed to send reset link.' });
+        } finally { setForgotLoading(false); }
     };
-
-    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
-
+        setLoading(true); setError('');
         try {
             const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            const res = await axios.post(`${API_URL}/api/students/login`, {
-                email: formData.email,
-                password: formData.password
-            });
-
+            const res = await axios.post(`${API_URL}/api/students/login`, formData);
             if (res.data.success) {
-                // Save user and token to local storage
                 localStorage.setItem('studentUser', JSON.stringify(res.data.user));
                 localStorage.setItem('studentToken', res.data.token);
+                localStorage.setItem('showLoginBlast', 'true');
                 navigate('/');
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
+    const stats = [
+        { label: 'Today', count: joinCounts.today, icon: Calendar, grad: 'from-violet-500 to-purple-600' },
+        { label: 'This Week', count: joinCounts.week, icon: TrendingUp, grad: 'from-blue-500 to-cyan-500' },
+        { label: 'This Month', count: joinCounts.month, icon: Users, grad: 'from-emerald-500 to-teal-500' },
+        { label: 'Total', count: joinCounts.total, icon: Star, grad: 'from-amber-500 to-orange-500' },
+    ];
+
+    const rev = reviews[currentReviewIndex];
+
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            {/* Left Side - Visual & Branding */}
-            <div className="hidden lg:flex w-1/2 bg-[#0F172A] relative overflow-hidden items-center justify-center">
-                {/* Background Animation & Effects */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute top-0 -left-4 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob"></div>
-                    <div className="absolute top-0 -right-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000"></div>
-                    <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-4000"></div>
-                    
-                    <img
-                        src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80"
-                        alt="Background"
-                        className="w-full h-full object-cover opacity-10 mix-blend-luminosity"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A]/90 via-[#1E293B]/80 to-[#0F172A]/90" />
+        <div className="min-h-screen flex" style={{ fontFamily: "'Inter', sans-serif" }}>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+            {/* ── LEFT PANEL ── */}
+            <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden flex-col justify-between p-12"
+                style={{ background: 'linear-gradient(135deg, #0a0a1a 0%, #0d1117 30%, #0f0f2e 60%, #0a0a1a 100%)' }}>
+
+                {/* Animated background orbs */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-20"
+                        style={{ background: 'radial-gradient(circle, #7c3aed, transparent 70%)', animation: 'float 8s ease-in-out infinite' }} />
+                    <div className="absolute top-1/2 -right-24 w-[400px] h-[400px] rounded-full opacity-15"
+                        style={{ background: 'radial-gradient(circle, #2563eb, transparent 70%)', animation: 'float 10s ease-in-out infinite reverse' }} />
+                    <div className="absolute -bottom-24 left-1/3 w-[350px] h-[350px] rounded-full opacity-10"
+                        style={{ background: 'radial-gradient(circle, #06b6d4, transparent 70%)', animation: 'float 12s ease-in-out infinite' }} />
+                    {/* Grid overlay */}
+                    <div className="absolute inset-0 opacity-[0.03]"
+                        style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
                 </div>
 
-                <div className="relative z-10 w-full max-w-2xl px-12">
-                    {/* Header Text */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
-                        className="mb-12 text-center"
-                    >
-                        <h1 className="text-5xl font-extrabold text-white mb-6 tracking-tight leading-tight">
-                            Elevate Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Future</span>
+                {/* Top: Branding */}
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}
+                    className="relative z-10 flex items-center gap-3">
+                    {settings?.logoUrl ? (
+                        <img src={settings.logoUrl} alt={settings.siteTitle} className="h-10 w-auto object-contain" />
+                    ) : (
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg"
+                            style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)' }}>
+                            {settings?.siteTitle?.charAt(0) || 'F'}
+                        </div>
+                    )}
+                    <span className="text-white font-bold text-lg tracking-tight">{settings?.siteTitle || 'Finwise Careers'}</span>
+                </motion.div>
+
+                {/* Middle: Hero content */}
+                <div className="relative z-10 flex-1 flex flex-col justify-center py-8">
+                    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6 border"
+                            style={{ background: 'rgba(124,58,237,0.15)', borderColor: 'rgba(124,58,237,0.3)' }}>
+                            <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                            <span className="text-violet-300 text-xs font-semibold tracking-wider uppercase">India's #1 Career Platform</span>
+                        </div>
+                        <h1 className="text-5xl font-black text-white leading-[1.1] mb-5">
+                            Build Your Dream <span style={{ background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Career</span><br />
+
+                            Today.
                         </h1>
-                        <p className="text-slate-400 text-lg leading-relaxed max-w-md mx-auto">
-                            Join thousands of students achieving their career goals with our industry-leading curriculum and expert mentorship.
+                        <p className="text-slate-400 text-base leading-relaxed mb-8 max-w-sm">
+                            Join thousands of students who transformed their careers with industry-expert mentorship and hands-on learning.
                         </p>
-                    </motion.div>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-4 mb-12">
-                        {[
-                            { label: 'Today Joined', count: joinCounts.today, icon: Calendar, color: 'from-blue-500 to-cyan-500' },
-                            { label: 'This Week', count: joinCounts.week, icon: TrendingUp, color: 'from-indigo-500 to-purple-500' },
-                            { label: 'This Month', count: joinCounts.month, icon: Users, color: 'from-pink-500 to-rose-500' }
-                        ].map((stat, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.2 + (idx * 0.1) }}
-                                className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl text-center hover:bg-slate-800/60 transition-all group"
-                            >
-                                <div className={`w-10 h-10 mx-auto mb-3 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform`}>
-                                    <stat.icon size={20} className="text-white" />
-                                </div>
-                                <div className="text-2xl font-bold text-white mb-1">
-                                    {stat.count}+
-                                </div>
-                                <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
-                                    {stat.label}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
 
-                    {/* Review Carousel */}
-                    <div className="relative h-48">
-                        <AnimatePresence mode='wait'>
-                            {reviews.length > 0 && (
-                                <motion.div
-                                    key={currentReviewIndex}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.5 }}
-                                    className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-3xl relative overflow-hidden"
-                                >
-                                    <Quote className="absolute -top-2 -left-2 w-12 h-12 text-white/5 transform -rotate-12" />
-                                    
-                                    <div className="flex items-center gap-1 mb-4 text-amber-400">
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-4 gap-3 mb-8">
+                            {stats.map((s, i) => {
+                                const Icon = s.icon;
+                                return (
+                                    <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.7 + i * 0.1 }}
+                                        className="rounded-2xl p-3 text-center border"
+                                        style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)' }}>
+                                        <div className={`w-7 h-7 mx-auto mb-2 rounded-lg bg-gradient-to-br ${s.grad} flex items-center justify-center`}>
+                                            <Icon size={13} className="text-white" />
+                                        </div>
+                                        <div className="text-base font-black text-white">{s.count ? s.count.toLocaleString() : '0'}+</div>
+                                        <div className="text-[9px] uppercase tracking-widest text-slate-500 mt-0.5 font-medium">{s.label}</div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Review Carousel */}
+                        {reviews.length > 0 && rev && (
+                            <AnimatePresence mode="wait">
+                                <motion.div key={currentReviewIndex}
+                                    initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}
+                                    transition={{ duration: 0.4 }}
+                                    className="rounded-2xl p-5 border relative overflow-hidden"
+                                    style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                                    <Quote className="absolute top-3 right-4 text-white/5" size={40} />
+                                    <div className="flex gap-0.5 mb-3">
                                         {[...Array(5)].map((_, i) => (
-                                            <Star 
-                                                key={i} 
-                                                size={14} 
-                                                fill={i < (reviews[currentReviewIndex].rating || 5) ? "currentColor" : "none"} 
-                                                className={i < (reviews[currentReviewIndex].rating || 5) ? "" : "text-slate-600"}
-                                            />
+                                            <Star key={i} size={12} className={i < (rev.rating || 5) ? 'text-amber-400' : 'text-slate-700'}
+                                                fill={i < (rev.rating || 5) ? 'currentColor' : 'none'} />
                                         ))}
                                     </div>
-
-                                    <p className="text-slate-300 text-sm italic mb-6 leading-relaxed line-clamp-3">
-                                        "{reviews[currentReviewIndex].reviewText}"
-                                    </p>
-
+                                    <p className="text-slate-300 text-sm leading-relaxed mb-4 line-clamp-2 italic">"{rev.reviewText}"</p>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                                            {reviews[currentReviewIndex].studentName.charAt(0)}
-                                        </div>
+                                        {rev.studentImage && rev.studentImage !== 'no-photo.jpg' ? (
+                                            <img src={rev.studentImage} alt={rev.studentName} className="w-9 h-9 rounded-full object-cover border-2 border-white/10" />
+                                        ) : (
+                                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)' }}>
+                                                {rev.studentName?.charAt(0)}
+                                            </div>
+                                        )}
                                         <div>
-                                            <div className="text-sm font-semibold text-white">
-                                                {reviews[currentReviewIndex].studentName}
-                                            </div>
-                                            <div className="text-xs text-slate-500">
-                                                {reviews[currentReviewIndex].role} • {reviews[currentReviewIndex].courseTaken}
-                                            </div>
+                                            <div className="text-sm font-semibold text-white">{rev.studentName}</div>
+                                            <div className="text-xs text-slate-500">{rev.role}</div>
                                         </div>
+                                    </div>
+                                    {/* Dots */}
+                                    <div className="flex gap-1.5 mt-4">
+                                        {reviews.map((_, i) => (
+                                            <button key={i} onClick={() => setCurrentReviewIndex(i)}
+                                                className={`h-1 rounded-full transition-all duration-300 ${i === currentReviewIndex ? 'w-6 bg-violet-500' : 'w-1.5 bg-slate-700'}`} />
+                                        ))}
                                     </div>
                                 </motion.div>
-                            )}
-                        </AnimatePresence>
-                        
-                        {/* Carousel Indicators */}
-                        <div className="flex justify-center gap-2 mt-6">
-                            {reviews.map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setCurrentReviewIndex(i)}
-                                    className={`h-1 rounded-full transition-all duration-300 ${i === currentReviewIndex ? 'w-8 bg-indigo-500' : 'w-2 bg-slate-700'}`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Right Side - Login Form */}
-            <div className="w-full lg:w-1/2 flex flex-col justify-center py-12 px-6 lg:px-20 xl:px-24 bg-white relative">
-                <motion.div 
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="sm:mx-auto sm:w-full sm:max-w-md"
-                >
-                    <div className="flex justify-center mb-8">
-                        {settings?.logoUrl ? (
-                            <motion.img
-                                whileHover={{ scale: 1.05 }}
-                                src={settings.logoUrl}
-                                alt={settings.siteTitle}
-                                className="h-20 w-auto object-contain"
-                            />
-                        ) : (
-                            <motion.div 
-                                whileHover={{ rotate: 0 }}
-                                className="h-16 w-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-xl transform rotate-3 transition-transform"
-                            >
-                                {settings?.siteTitle ? settings.siteTitle.charAt(0) : 'F'}
-                            </motion.div>
+                            </AnimatePresence>
                         )}
-                    </div>
-
-                    <h2 className="text-center text-3xl font-extrabold text-gray-900 mb-2">
-                        Welcome Back
-                    </h2>
-                    <p className="text-center text-gray-500 text-sm mb-10">
-                        Access your student portal dashboard
-                    </p>
-                </motion.div>
-
-                <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.4 }}
-                    className="sm:mx-auto sm:w-full sm:max-w-md"
-                >
-                    <form className="space-y-6" onSubmit={handleLogin}>
-
-                        {error && (
-                            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-md animate-pulse">
-                                <div className="flex">
-                                    <div className="flex-shrink-0">
-                                        <span className="text-red-500 font-bold">⚠</span>
-                                    </div>
-                                    <div className="ml-3">
-                                        <p className="text-sm font-medium text-red-700">{error}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                                Email address
-                            </label>
-                            <div className="relative rounded-lg shadow-sm">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <User className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    className="block w-full pl-10 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all outline-none"
-                                    placeholder="student@example.com"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                                Password
-                            </label>
-                            <div className="relative rounded-lg shadow-sm group">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                                </div>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    autoComplete="current-password"
-                                    required
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    className="block w-full pl-10 pr-10 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all outline-none"
-                                    placeholder="••••••••"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-indigo-600 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                <input
-                                    id="remember-me"
-                                    name="remember-me"
-                                    type="checkbox"
-                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                />
-                                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                                    Remember me
-                                </label>
-                            </div>
-
-                            <div className="text-sm">
-                                <button type="button" onClick={() => setShowForgotModal(true)} className="font-medium text-indigo-600 hover:text-indigo-500">
-                                    Forgot your password?
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 transform transition hover:-translate-y-0.5"
-                            >
-                                {loading ? 'Authenticating...' : 'Sign In to Portal'}
-                            </button>
-                        </div>
-                    </form>
-
-                    <div className="mt-8 text-center text-sm text-gray-600">
-                        Don't have an account? <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">Start your 10-day free trial</Link>
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Forgot Password Modal */}
-            {showForgotModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
-                    <motion.div
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative"
-                    >
-                        <button
-                            onClick={() => setShowForgotModal(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                        >
-                            ✕
-                        </button>
-
-                        <div className="text-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-900">Reset Password</h3>
-                            <p className="text-sm text-gray-500 mt-2">Enter your email to receive a reset link.</p>
-                        </div>
-
-                        {forgotStatus.message && (
-                            <div className={`p-3 mb-4 rounded-lg text-sm flex items-center gap-2 ${forgotStatus.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                                <span>{forgotStatus.success ? '✓' : '⚠'}</span>
-                                {forgotStatus.message}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleForgotPassword} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={forgotEmail}
-                                    onChange={(e) => setForgotEmail(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    placeholder="Enter your registered email"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={forgotLoading}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors flex justify-center"
-                            >
-                                {forgotLoading ? 'Sending...' : 'Send Reset Link'}
-                            </button>
-                        </form>
                     </motion.div>
                 </div>
-            )}
+            </div>
+
+            {/* ── RIGHT PANEL ── */}
+            <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-16 xl:px-20 bg-white relative overflow-y-auto">
+                {/* Subtle top accent */}
+                <div className="absolute top-0 left-0 right-0 h-1" style={{ background: 'linear-gradient(90deg, #7c3aed, #2563eb, #06b6d4)' }} />
+
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+                    className="w-full max-w-md mx-auto py-12">
+
+                    {/* Header */}
+                    <div className="mb-10">
+                        <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle size={18} className="text-violet-600" />
+                            <span className="text-violet-600 text-sm font-semibold">Secure Student Portal</span>
+                        </div>
+                        <h2 className="text-3xl font-black text-gray-900 mb-2">Welcome back 👋</h2>
+                        <p className="text-gray-500 text-sm">Sign in to continue your learning journey</p>
+                    </div>
+
+                    {/* Error */}
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100">
+                                <span className="text-red-500 mt-0.5">⚠</span>
+                                <p className="text-sm text-red-700 font-medium">{error}</p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        {/* Email */}
+                        <div>
+                            <label htmlFor="login-email" className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                            <div className="relative group">
+                                <Mail size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-violet-600 transition-colors" />
+                                <input id="login-email" name="email" type="email" required autoComplete="email"
+                                    value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                    className="w-full pl-11 pr-4 py-3.5 border-2 border-gray-200 rounded-xl text-sm outline-none transition-all duration-200 bg-gray-50 focus:bg-white focus:border-violet-500 focus:shadow-[0_0_0_4px_rgba(124,58,237,0.08)]"
+                                    placeholder="your@email.com" />
+                            </div>
+                        </div>
+
+                        {/* Password */}
+                        <div>
+                            <label htmlFor="login-password" className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                            <div className="relative group">
+                                <Lock size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-violet-600 transition-colors" />
+                                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password"
+                                    value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                    className="w-full pl-11 pr-12 py-3.5 border-2 border-gray-200 rounded-xl text-sm outline-none transition-all duration-200 bg-gray-50 focus:bg-white focus:border-violet-500 focus:shadow-[0_0_0_4px_rgba(124,58,237,0.08)]"
+                                    placeholder="••••••••••" />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-violet-600 transition-colors">
+                                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Remember / Forgot */}
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2.5 cursor-pointer group">
+                                <input type="checkbox" id="remember-me"
+                                    className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer" />
+                                <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors">Remember me</span>
+                            </label>
+                            <button type="button" onClick={() => setShowForgotModal(true)}
+                                className="text-sm font-semibold text-violet-600 hover:text-violet-800 transition-colors">
+                                Forgot password?
+                            </button>
+                        </div>
+
+                        {/* Submit */}
+                        <button type="submit" disabled={loading}
+                            className="w-full py-3.5 px-6 rounded-xl text-sm font-bold text-white transition-all duration-200 disabled:opacity-70 relative overflow-hidden"
+                            style={{ background: loading ? '#6d28d9' : 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }}>
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                                {loading ? (
+                                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Signing in...</>
+                                ) : 'Sign In to Portal'}
+                            </span>
+                            {!loading && <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                                style={{ background: 'linear-gradient(135deg, #6d28d9 0%, #1d4ed8 100%)' }} />}
+                        </button>
+                    </form>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-4 my-7">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-400 font-medium">New to the platform?</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+
+                    {/* Register CTA */}
+                    <Link to="/register"
+                        className="flex items-center justify-center w-full py-3.5 px-6 rounded-xl border-2 border-gray-200 text-sm font-bold text-gray-700 hover:border-violet-400 hover:text-violet-700 hover:bg-violet-50 transition-all duration-200">
+                        Create Free Account →
+                    </Link>
+
+                    <p className="text-center text-xs text-gray-400 mt-6">
+                        By signing in, you agree to our{' '}
+                        <span className="text-violet-600 cursor-pointer hover:underline">Terms of Service</span> &{' '}
+                        <span className="text-violet-600 cursor-pointer hover:underline">Privacy Policy</span>
+                    </p>
+                </motion.div>
+            </div>
+
+            {/* ── FORGOT PASSWORD MODAL ── */}
+            <AnimatePresence>
+                {showForgotModal && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative">
+                            <button onClick={() => { setShowForgotModal(false); setForgotStatus({ success: false, message: '' }); }}
+                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors text-sm font-bold">✕</button>
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+                                style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)' }}>
+                                <Lock size={22} className="text-white" />
+                            </div>
+                            <h3 className="text-xl font-black text-gray-900 mb-1">Reset Password</h3>
+                            <p className="text-sm text-gray-500 mb-6">Enter your registered email and we'll send you a reset link.</p>
+                            {forgotStatus.message && (
+                                <div className={`p-3 mb-4 rounded-xl text-sm flex items-center gap-2 ${forgotStatus.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                    <span>{forgotStatus.success ? '✓' : '⚠'}</span>{forgotStatus.message}
+                                </div>
+                            )}
+                            <form onSubmit={handleForgotPassword} className="space-y-4">
+                                <input type="email" required value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-violet-500 transition-all bg-gray-50 focus:bg-white"
+                                    placeholder="your@email.com" />
+                                <button type="submit" disabled={forgotLoading}
+                                    className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-70"
+                                    style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)' }}>
+                                    {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <style>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0px) scale(1); }
+                    50% { transform: translateY(-30px) scale(1.05); }
+                }
+            `}</style>
         </div>
     );
 };

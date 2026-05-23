@@ -52,6 +52,11 @@ router.get('/:topicId', async (req, res) => {
             await content.populate('mcqTest.testId');
         }
 
+        // Populate multiple MCQ tests if present
+        if (content.mcqTests && content.mcqTests.length > 0) {
+            await content.populate('mcqTests.testId');
+        }
+
         res.json({ success: true, content });
     } catch (err) {
         console.error('Get Topic Content Error:', err);
@@ -101,12 +106,66 @@ router.delete('/:topicId/mcqs', async (req, res) => {
     }
 });
 
+// @route   POST /api/topic-content/:topicId/mcq-tests
+// @desc    Add an MCQ test to the list of tests
+// @access  Admin
+router.post('/:topicId/mcq-tests', async (req, res) => {
+    try {
+        const { testId, requiredTier } = req.body;
+        const { topicId } = req.params;
+
+        const test = await HiringTest.findById(testId);
+        if (!test || test.type !== 'mcq') {
+            return res.status(400).json({ message: 'Invalid MCQ test' });
+        }
+
+        const content = await TopicContent.findOneAndUpdate(
+            { topicId },
+            { $push: { mcqTests: { testId, enabled: true, requiredTier: requiredTier || 'Basic' } } },
+            { upsert: true, new: true }
+        ).populate('mcqTests.testId');
+
+        if (content.mcqTest?.testId) {
+            await content.populate('mcqTest.testId');
+        }
+
+        res.json({ success: true, content });
+    } catch (err) {
+        console.error('Add MCQ Test Error:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @route   DELETE /api/topic-content/:topicId/mcq-tests/:testIndex
+// @desc    Remove an MCQ test by index
+// @access  Admin
+router.delete('/:topicId/mcq-tests/:testIndex', async (req, res) => {
+    try {
+        const content = await TopicContent.findOne({ topicId: req.params.topicId });
+        if (!content) return res.status(404).json({ message: 'Content not found' });
+
+        const idx = parseInt(req.params.testIndex);
+        content.mcqTests.splice(idx, 1);
+        await content.save();
+
+        await content.populate('mcqTests.testId');
+        if (content.mcqTest?.testId) {
+            await content.populate('mcqTest.testId');
+        }
+
+        res.json({ success: true, content });
+    } catch (err) {
+        console.error('Delete MCQ Test Error:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
 // @route   POST /api/topic-content/:topicId/task
 // @desc    Add a task to a topic
 // @access  Admin
 router.post('/:topicId/task', upload.single('file'), async (req, res) => {
     try {
-        const { title, description } = req.body;
+        const { title, description, requiredTier } = req.body;
         const { topicId } = req.params;
 
         if (!title) return res.status(400).json({ message: 'Task title is required' });
@@ -122,7 +181,7 @@ router.post('/:topicId/task', upload.single('file'), async (req, res) => {
 
         const content = await TopicContent.findOneAndUpdate(
             { topicId },
-            { $push: { tasks: { title, description: description || '', fileUrl, filePublicId } } },
+            { $push: { tasks: { title, description: description || '', fileUrl, filePublicId, requiredTier: requiredTier || 'Basic' } } },
             { upsert: true, new: true }
         );
 
@@ -157,7 +216,7 @@ router.delete('/:topicId/task/:taskIndex', async (req, res) => {
 // @access  Admin
 router.post('/:topicId/assignment', upload.single('questionFile'), async (req, res) => {
     try {
-        const { title } = req.body;
+        const { title, requiredTier } = req.body;
         const { topicId } = req.params;
 
         if (!title) return res.status(400).json({ message: 'Assignment title is required' });
@@ -173,7 +232,7 @@ router.post('/:topicId/assignment', upload.single('questionFile'), async (req, r
 
         const content = await TopicContent.findOneAndUpdate(
             { topicId },
-            { $push: { assignments: { title, questionUrl, questionPublicId } } },
+            { $push: { assignments: { title, questionUrl, questionPublicId, requiredTier: requiredTier || 'Basic' } } },
             { upsert: true, new: true }
         );
 
@@ -279,7 +338,7 @@ router.post('/:topicId/attempt-mcq', async (req, res) => {
         }
 
         // Check if already attempted
-        const existing = await StudentMCQAttempt.findOne({ studentId, topicId });
+        const existing = await StudentMCQAttempt.findOne({ studentId, topicId, testId });
         if (existing) {
             const existingPct = existing.total > 0 ? (existing.score / existing.total) * 100 : 0;
             if (existingPct >= 75) {
@@ -372,10 +431,10 @@ router.get('/:topicId/my-submissions/:studentId', async (req, res) => {
     try {
         const { topicId, studentId } = req.params;
 
-        const [taskSubmissions, assignmentSubmissions, mcqAttempt] = await Promise.all([
+        const [taskSubmissions, assignmentSubmissions, mcqAttempts] = await Promise.all([
             StudentTaskSubmission.find({ studentId, topicId }),
             StudentAssignmentSubmission.find({ studentId, topicId }),
-            StudentMCQAttempt.findOne({ studentId, topicId })
+            StudentMCQAttempt.find({ studentId, topicId })
         ]);
 
         res.json({
@@ -383,7 +442,8 @@ router.get('/:topicId/my-submissions/:studentId', async (req, res) => {
             submissions: {
                 tasks: taskSubmissions,
                 assignments: assignmentSubmissions,
-                mcq: mcqAttempt
+                mcq: mcqAttempts[0] || null, // legacy single compat
+                mcqs: mcqAttempts
             }
         });
     } catch (err) {
