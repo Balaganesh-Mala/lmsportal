@@ -22,6 +22,18 @@ const Meetings = () => {
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+    const user = (() => {
+        try {
+            const stored = localStorage.getItem('adminUser');
+            return stored ? JSON.parse(stored) : null;
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    })();
+
+    const isAdmin = user && (user.role === 'Admin' || user.role === 'Administrator' || user.role === 'Super Admin');
+
     useEffect(() => {
         fetchMeetings();
         fetchTrainers();
@@ -105,13 +117,15 @@ const Meetings = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-900">Staff Meetings</h1>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Schedule Meeting
-                </button>
+                {isAdmin && (
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Schedule Meeting
+                    </button>
+                )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -122,12 +136,14 @@ const Meetings = () => {
                                 <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={meeting.title}>
                                     {meeting.title}
                                 </h3>
-                                <button
-                                    onClick={() => handleDelete(meeting._id)}
-                                    className="text-gray-400 hover:text-red-500 transition-colors"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                {isAdmin && (
+                                    <button
+                                        onClick={() => handleDelete(meeting._id)}
+                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
                             </div>
 
                             <p className="text-sm text-gray-500 mb-4 line-clamp-2">

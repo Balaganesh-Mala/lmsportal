@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const SupportMessageSchema = new mongoose.Schema({
     student: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Student',
         required: true
     },
     admin: {
@@ -12,7 +11,7 @@ const SupportMessageSchema = new mongoose.Schema({
     },
     sender: {
         type: String,
-        enum: ['student', 'admin'],
+        enum: ['student', 'admin', 'trainer'],
         required: true
     },
     message: {

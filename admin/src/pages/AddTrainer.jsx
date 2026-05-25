@@ -22,11 +22,37 @@ const AddTrainer = () => {
         bio: '',
         access: {
             dashboard: true,
+            dashboardOverview: true,
+            dashboardFinance: true,
+            dashboardStudents: true,
+            dashboardInquiries: true,
+
             studentsManagement: true,
+            studentsList: true,
+            batchStudents: true,
+
             coursesLearning: true,
+            courses: true,
+            trainers: true,
+            studyMaterials: true,
+
             finance: false,
+            feeManagement: false,
+            subscriptionPlans: false,
+            subscribers: false,
+            coupons: false,
+            expenses: false,
+
             marketingWebsite: false,
+            banners: false,
+            spotlights: false,
+            blogs: false,
+            reviews: false,
+
             communication: false,
+            supportInbox: false,
+            inquiries: false,
+
             settings: false
         },
         photo: ''
@@ -244,7 +270,7 @@ const AddTrainer = () => {
                             Feature Access / Permissions (Sidebar Tabs)
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {Object.keys(formData.access).map(key => {
+                            {['dashboard', 'studentsManagement', 'coursesLearning', 'finance', 'marketingWebsite', 'communication', 'settings'].map(key => {
                                 const friendlyLabels = {
                                     dashboard: 'Dashboard',
                                     studentsManagement: 'Students Management',
@@ -254,19 +280,101 @@ const AddTrainer = () => {
                                     communication: 'Communication',
                                     settings: 'Settings'
                                 };
+
+                                const SUB_PERMISSIONS = {
+                                    dashboard: [
+                                        { subKey: 'dashboardOverview', label: 'Overview Metrics' },
+                                        { subKey: 'dashboardFinance', label: 'Finance Metrics' },
+                                        { subKey: 'dashboardStudents', label: 'Students Metrics' },
+                                        { subKey: 'dashboardInquiries', label: 'Inquiries Metrics' }
+                                    ],
+                                    studentsManagement: [
+                                        { subKey: 'studentsList', label: 'Student List' },
+                                        { subKey: 'batchStudents', label: 'Batch Students' }
+                                    ],
+                                    coursesLearning: [
+                                        { subKey: 'courses', label: 'Courses' },
+                                        { subKey: 'trainers', label: 'Trainers (Staff)' },
+                                        { subKey: 'studyMaterials', label: 'Study Materials' }
+                                    ],
+                                    finance: [
+                                        { subKey: 'feeManagement', label: 'Fee Management' },
+                                        { subKey: 'subscriptionPlans', label: 'Subscription Plans' },
+                                        { subKey: 'subscribers', label: 'Subscribers' },
+                                        { subKey: 'coupons', label: 'Coupons' },
+                                        { subKey: 'expenses', label: 'Expenses' }
+                                    ],
+                                    marketingWebsite: [
+                                        { subKey: 'banners', label: 'Banners' },
+                                        { subKey: 'spotlights', label: 'Spotlights' },
+                                        { subKey: 'blogs', label: 'Blogs' },
+                                        { subKey: 'reviews', label: 'Reviews' }
+                                    ],
+                                    communication: [
+                                        { subKey: 'supportInbox', label: 'Support Inbox' },
+                                        { subKey: 'inquiries', label: 'Inquiries' }
+                                    ]
+                                };
+
                                 return (
-                                    <label key={key} className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none ${formData.access[key] ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.access[key] ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'}`}>
-                                            {formData.access[key] && <Check size={14} className="text-white" />}
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.access[key]}
-                                            onChange={() => setFormData({ ...formData, access: { ...formData.access, [key]: !formData.access[key] } })}
-                                            className="hidden"
-                                        />
-                                        <span className="text-sm font-medium text-gray-700">{friendlyLabels[key] || key}</span>
-                                    </label>
+                                    <React.Fragment key={key}>
+                                        <label className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none ${formData.access[key] ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.access[key] ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'}`}>
+                                                {formData.access[key] && <Check size={14} className="text-white" />}
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.access[key]}
+                                                onChange={() => {
+                                                    const nextVal = !formData.access[key];
+                                                    const subUpdates = {};
+                                                    if (SUB_PERMISSIONS[key]) {
+                                                        SUB_PERMISSIONS[key].forEach(sub => {
+                                                            subUpdates[sub.subKey] = nextVal;
+                                                        });
+                                                    }
+                                                    setFormData({
+                                                        ...formData,
+                                                        access: {
+                                                            ...formData.access,
+                                                            [key]: nextVal,
+                                                            ...subUpdates
+                                                        }
+                                                    });
+                                                }}
+                                                className="hidden"
+                                            />
+                                            <span className="text-sm font-medium text-gray-700">{friendlyLabels[key] || key}</span>
+                                        </label>
+                                        
+                                        {SUB_PERMISSIONS[key] && formData.access[key] && (
+                                            <div className="col-span-full mt-2 mb-4 pl-6 pr-4 py-4 bg-slate-50/80 rounded-2xl border border-slate-100/90 space-y-4">
+                                                <div className="flex items-center justify-between pb-2 border-b border-slate-200/50">
+                                                    <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Custom {friendlyLabels[key]} Sub-Sections</p>
+                                                    <span className="text-[10px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full font-bold">Customize Tabs Access</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                                    {SUB_PERMISSIONS[key].map(({ subKey, label }) => (
+                                                        <label key={subKey} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none bg-white ${formData.access[subKey] ? 'border-indigo-400 bg-indigo-50/20' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!formData.access[subKey]}
+                                                                onChange={() => setFormData({ 
+                                                                    ...formData, 
+                                                                    access: { 
+                                                                        ...formData.access, 
+                                                                        [subKey]: !formData.access[subKey] 
+                                                                    } 
+                                                                })}
+                                                                className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                                                            />
+                                                            <span className="text-xs font-semibold text-gray-700">{label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </React.Fragment>
                                 );
                             })}
                         </div>

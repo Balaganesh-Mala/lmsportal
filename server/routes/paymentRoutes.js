@@ -42,9 +42,24 @@ router.post('/create-subscription', async (req, res) => {
             const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
             
             if (coupon) {
-                let discount = 0;
                 let originalAmountRs = amount / 100;
 
+                // Check Expiry
+                if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+                    return res.status(400).json({ success: false, message: 'Coupon has expired' });
+                }
+
+                // Check Usage Limit
+                if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+                    return res.status(400).json({ success: false, message: 'Coupon usage limit reached' });
+                }
+
+                // Check Min Purchase
+                if (coupon.minPurchase && originalAmountRs < coupon.minPurchase) {
+                    return res.status(400).json({ success: false, message: `Minimum purchase of ₹${coupon.minPurchase} required` });
+                }
+
+                let discount = 0;
                 if (coupon.discountType === 'percentage') {
                     discount = (originalAmountRs * coupon.discountValue) / 100;
                     if (coupon.maxDiscount && discount > coupon.maxDiscount) {
@@ -55,6 +70,8 @@ router.post('/create-subscription', async (req, res) => {
                 }
 
                 amount = Math.max(0, (originalAmountRs - discount) * 100);
+            } else {
+                return res.status(400).json({ success: false, message: 'Invalid or inactive coupon code' });
             }
         }
 
@@ -120,10 +137,46 @@ router.post('/verify-subscription', async (req, res) => {
             const SubscriptionPlan = require('../models/SubscriptionPlan');
 
             let amount = 0;
+            
+            // 1. Fetch exact paid amount directly from Razorpay (most secure & accurate)
+            if (razorpayInstance) {
+                try {
+                    const paymentDetails = await razorpayInstance.payments.fetch(razorpay_payment_id);
+                    if (paymentDetails && paymentDetails.amount) {
+                        amount = paymentDetails.amount / 100; // Razorpay returns in paise, convert to Rs
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch payment details from Razorpay, falling back to manual calculation:', err);
+                }
+            }
+
             let plan = null;
             if (req.body.planId) {
                 plan = await SubscriptionPlan.findById(req.body.planId);
-                if (plan) amount = plan.price;
+            }
+
+            // 2. Fallback to manual plan/coupon calculation if Razorpay fetch failed or isn't configured
+            if (amount === 0) {
+                if (plan) {
+                    amount = plan.price;
+                }
+                
+                if (req.body.couponId && amount > 0) {
+                    const Coupon = require('../models/Coupon');
+                    const coupon = await Coupon.findById(req.body.couponId);
+                    if (coupon) {
+                        let discount = 0;
+                        if (coupon.discountType === 'percentage') {
+                            discount = (amount * coupon.discountValue) / 100;
+                            if (coupon.maxDiscount && discount > coupon.maxDiscount) {
+                                discount = coupon.maxDiscount;
+                            }
+                        } else {
+                            discount = coupon.discountValue;
+                        }
+                        amount = Math.max(0, amount - discount);
+                    }
+                }
             }
 
             // Calculate Expiry
@@ -143,13 +196,15 @@ router.post('/verify-subscription', async (req, res) => {
             student.subscriptionStartedAt = new Date();
             student.subscriptionExpiresAt = expiryDate;
             
-            // Auto-enable core features for subscribed students
-            if (student.access) {
-                const isPremium = ['Full', 'Premium', 'Platinum'].includes(student.planTier);
-                student.access.typingPractice = isPremium; // Only Premium gets typing
-                student.access.myCourses = true;
-                student.access.payments = true;
+            // Auto-enable core features for subscribed students safely
+            if (!student.access) {
+                student.access = {};
             }
+            const isPremium = ['Full', 'Premium', 'Platinum'].includes(student.planTier);
+            student.access.typingPractice = isPremium; // Only Premium gets typing
+            student.access.myCourses = true;
+            student.access.payments = true;
+            student.markModified('access');
             
             await student.save();
 

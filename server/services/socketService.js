@@ -44,9 +44,9 @@ const initSocket = (server) => {
                 });
                 await newMessage.save();
 
-                if (sender === 'student') {
-                    // Student message:
-                    // 1. Send 'message' only to the student's own room (for their chat widget)
+                if (sender !== 'admin') {
+                    // Student or Trainer message:
+                    // 1. Send 'message' only to the sender's own room (for their chat widget)
                     io.to(studentId).emit('message', newMessage);
                     // 2. Notify admins via new_inquiry (with full message for display + sidebar update)
                     io.to('admin_inbox').emit('new_inquiry', {
@@ -55,7 +55,7 @@ const initSocket = (server) => {
                     });
                 } else {
                     // Admin message:
-                    // Send 'message' only to the student's room (admin doesn't need an echo back)
+                    // Send 'message' only to the inquirer's room (admin doesn't need an echo back)
                     io.to(studentId).emit('message', newMessage);
                     // Also notify admin_inbox so sidebar last message updates
                     io.to('admin_inbox').emit('admin_sent', {

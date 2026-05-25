@@ -58,7 +58,7 @@ function StatCard({ title, value, sub, icon: Icon, iconColor, iconBg, trend, tre
 
 // ─── OVERVIEW TAB ────────────────────────────────────────────────────────────
 
-function OverviewTab() {
+function OverviewTab({ user: propUser }) {
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState(null);
 
@@ -123,68 +123,97 @@ function OverviewTab() {
     if (loading) return <Spinner />;
     if (!stats) return <EmptyState message="Could not load overview" />;
 
+    const user = propUser || (() => {
+        try {
+            const stored = localStorage.getItem('adminUser');
+            return stored ? JSON.parse(stored) : null;
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    })();
+
+    const hasPermission = (key) => {
+        if (!user) return true;
+        if (user.role === 'Administrator' || user.role === 'Super Admin' || user.role === 'Admin') return true;
+
+        if (key === 'students') return user.access ? !!user.access.dashboardStudents : false;
+        if (key === 'finance') return user.access ? !!user.access.dashboardFinance : false;
+        if (key === 'inquiries') return user.access ? !!user.access.dashboardInquiries : false;
+        if (key === 'meetings') return true; // Meetings always visible
+        return false;
+    };
+
     const kpis = [
-        { title: 'Total Students', value: stats.totalStudents, icon: GraduationCap, iconColor: 'text-indigo-600', iconBg: 'bg-indigo-50', sub: 'All enrolled' },
-        { title: 'Active Batches', value: stats.activeBatches, icon: Layers, iconColor: 'text-violet-600', iconBg: 'bg-violet-50', sub: `${stats.upcomingBatches} upcoming` },
-        { title: 'New Inquiries', value: stats.newInquiries, icon: MessageSquare, iconColor: 'text-rose-600', iconBg: 'bg-rose-50', sub: 'Awaiting response', trend: 'New', trendPositive: false },
-        { title: 'Fees This Month', value: `₹${stats.feesThisMonth.toLocaleString()}`, icon: IndianRupee, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50', trend: 'Collected', trendPositive: true },
-        { title: 'Pending Fees', value: `₹${stats.pendingFees.toLocaleString()}`, icon: AlertCircle, iconColor: 'text-amber-600', iconBg: 'bg-amber-50', sub: 'Outstanding' },
-        { title: 'Upcoming Meetings', value: stats.upcomingMeetings, icon: CalendarCheck, iconColor: 'text-sky-600', iconBg: 'bg-sky-50', sub: 'Scheduled ahead' },
+        { title: 'Total Students', value: stats.totalStudents, icon: GraduationCap, iconColor: 'text-indigo-600', iconBg: 'bg-indigo-50', sub: 'All enrolled', key: 'students' },
+        { title: 'Active Batches', value: stats.activeBatches, icon: Layers, iconColor: 'text-violet-600', iconBg: 'bg-violet-50', sub: `${stats.upcomingBatches} upcoming`, key: 'students' },
+        { title: 'New Inquiries', value: stats.newInquiries, icon: MessageSquare, iconColor: 'text-rose-600', iconBg: 'bg-rose-50', sub: 'Awaiting response', trend: 'New', trendPositive: false, key: 'inquiries' },
+        { title: 'Fees This Month', value: `₹${stats.feesThisMonth.toLocaleString()}`, icon: IndianRupee, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50', trend: 'Collected', trendPositive: true, key: 'finance' },
+        { title: 'Pending Fees', value: `₹${stats.pendingFees.toLocaleString()}`, icon: AlertCircle, iconColor: 'text-amber-600', iconBg: 'bg-amber-50', sub: 'Outstanding', key: 'finance' },
+        { title: 'Upcoming Meetings', value: stats.upcomingMeetings, icon: CalendarCheck, iconColor: 'text-sky-600', iconBg: 'bg-sky-50', sub: 'Scheduled ahead', key: 'meetings' },
     ];
+
+    const allowedKpis = kpis.filter(k => hasPermission(k.key));
 
     return (
         <div className="space-y-8">
             {/* KPI Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {kpis.map((k, i) => <StatCard key={i} {...k} />)}
+                {allowedKpis.map((k, i) => <StatCard key={i} {...k} />)}
             </div>
 
             {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Enrollments */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2"><GraduationCap size={16} className="text-indigo-500" /> Recent Enrollments</h3>
-                        <span className="text-xs text-slate-400">Last 5</span>
-                    </div>
-                    <div className="divide-y divide-slate-50">
-                        {stats.recentStudents.length > 0 ? stats.recentStudents.map((s, i) => (
-                            <div key={i} className="flex items-center gap-3 px-6 py-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                                    {s.name?.charAt(0)?.toUpperCase() || '?'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-slate-800 truncate">{s.name}</p>
-                                    <p className="text-xs text-slate-400 truncate">{s.courseName || 'No course'}</p>
-                                </div>
-                                <span className="text-[10px] text-slate-400 shrink-0">{s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+            {(hasPermission('students') || hasPermission('inquiries')) && (
+                <div className={`grid grid-cols-1 ${hasPermission('students') && hasPermission('inquiries') ? 'lg:grid-cols-2' : ''} gap-6`}>
+                    {/* Recent Enrollments */}
+                    {hasPermission('students') && (
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2"><GraduationCap size={16} className="text-indigo-500" /> Recent Enrollments</h3>
+                                <span className="text-xs text-slate-400">Last 5</span>
                             </div>
-                        )) : <div className="px-6 py-8 text-center text-slate-400 text-sm">No students yet</div>}
-                    </div>
-                </div>
+                            <div className="divide-y divide-slate-50">
+                                {stats.recentStudents.length > 0 ? stats.recentStudents.map((s, i) => (
+                                    <div key={i} className="flex items-center gap-3 px-6 py-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                            {s.name?.charAt(0)?.toUpperCase() || '?'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-slate-800 truncate">{s.name}</p>
+                                            <p className="text-xs text-slate-400 truncate">{s.courseName || 'No course'}</p>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 shrink-0">{s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+                                    </div>
+                                )) : <div className="px-6 py-8 text-center text-slate-400 text-sm">No students yet</div>}
+                            </div>
+                        </div>
+                    )}
 
-                {/* Recent Inquiries */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2"><MessageSquare size={16} className="text-rose-500" /> Recent Inquiries</h3>
-                        <span className="text-xs text-slate-400">Last 5</span>
-                    </div>
-                    <div className="divide-y divide-slate-50">
-                        {stats.recentInquiries.length > 0 ? stats.recentInquiries.map((inq, i) => (
-                            <div key={i} className="flex items-center gap-3 px-6 py-3">
-                                <div className={`w-2 h-2 rounded-full shrink-0 ${inq.status === 'new' ? 'bg-rose-500' : inq.status === 'contacted' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-slate-800 truncate">{inq.name || 'Anonymous'}</p>
-                                    <p className="text-xs text-slate-400 truncate">{inq.phone || inq.email || '—'}</p>
-                                </div>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${inq.status === 'new' ? 'bg-rose-50 text-rose-600' : inq.status === 'contacted' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                    {inq.status || 'new'}
-                                </span>
+                    {/* Recent Inquiries */}
+                    {hasPermission('inquiries') && (
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2"><MessageSquare size={16} className="text-rose-500" /> Recent Inquiries</h3>
+                                <span className="text-xs text-slate-400">Last 5</span>
                             </div>
-                        )) : <div className="px-6 py-8 text-center text-slate-400 text-sm">No inquiries yet</div>}
-                    </div>
+                            <div className="divide-y divide-slate-50">
+                                {stats.recentInquiries.length > 0 ? stats.recentInquiries.map((inq, i) => (
+                                    <div key={i} className="flex items-center gap-3 px-6 py-3">
+                                        <div className={`w-2 h-2 rounded-full shrink-0 ${inq.status === 'new' ? 'bg-rose-500' : inq.status === 'contacted' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-slate-800 truncate">{inq.name || 'Anonymous'}</p>
+                                            <p className="text-xs text-slate-400 truncate">{inq.phone || inq.email || '—'}</p>
+                                        </div>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${inq.status === 'new' ? 'bg-rose-50 text-rose-600' : inq.status === 'contacted' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                            {inq.status || 'new'}
+                                        </span>
+                                    </div>
+                                )) : <div className="px-6 py-8 text-center text-slate-400 text-sm">No inquiries yet</div>}
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            )}
         </div>
     );
 }
@@ -640,35 +669,88 @@ const TABS = [
 ];
 
 export default function Dashboard() {
+    const [currentUser, setCurrentUser] = useState(() => {
+        try {
+            const stored = localStorage.getItem('adminUser');
+            return stored ? JSON.parse(stored) : null;
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    });
+
+    useEffect(() => {
+        const fetchMe = async () => {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const res = await axiosInstance.get(`${API_URL}/api/admin/me`);
+                if (res.data && res.data.success && res.data.user) {
+                    const freshUser = res.data.user;
+                    setCurrentUser(freshUser);
+                    localStorage.setItem('adminUser', JSON.stringify(freshUser));
+                }
+            } catch (err) {
+                console.error("Failed to sync user profile inside Dashboard", err);
+            }
+        };
+        fetchMe();
+    }, []);
+
+    const hasAccess = (tabId) => {
+        if (!currentUser) return true;
+        if (currentUser.role === 'Administrator' || currentUser.role === 'Super Admin' || currentUser.role === 'Admin') return true;
+
+        if (tabId === 'overview') return currentUser.access ? !!currentUser.access.dashboardOverview : true;
+        if (tabId === 'finance') return currentUser.access ? !!currentUser.access.dashboardFinance : false;
+        if (tabId === 'students') return currentUser.access ? !!currentUser.access.dashboardStudents : false;
+        if (tabId === 'inquiries') return currentUser.access ? !!currentUser.access.dashboardInquiries : false;
+        return false;
+    };
+
+    const allowedTabs = TABS.filter(tab => hasAccess(tab.id));
+
     const [activeTab, setActiveTab] = useState('overview');
+
+    // Automatically keep activeTab selection bounded within allowedTabs when permissions change
+    useEffect(() => {
+        const allowed = TABS.filter(tab => hasAccess(tab.id));
+        if (allowed.length > 0) {
+            const isCurrentTabAllowed = allowed.some(t => t.id === activeTab);
+            if (!isCurrentTabAllowed) {
+                setActiveTab(allowed[0].id);
+            }
+        }
+    }, [currentUser]);
 
     return (
         <div className="space-y-8">
             {/* Main Header / Tab Navigation */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/60 pb-6 mb-2">
-                <div className="flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-2xl w-full md:w-fit overflow-x-auto no-scrollbar">
-                    {TABS.map(tab => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap shrink-0 ${isActive
-                                    ? 'bg-white text-indigo-700 shadow-md ring-1 ring-slate-200/50'
-                                    : 'text-slate-500 hover:text-indigo-600 hover:bg-white/40'
-                                    }`}
-                            >
-                                <Icon size={18} className={isActive ? 'text-indigo-600' : 'text-slate-400'} />
-                                {tab.label}
-                            </button>
-                        );
-                    })}
+            {allowedTabs.length > 0 && (
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/60 pb-6 mb-2">
+                    <div className="flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-2xl w-full md:w-fit overflow-x-auto no-scrollbar">
+                        {allowedTabs.map(tab => {
+                            const Icon = tab.icon;
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap shrink-0 ${isActive
+                                        ? 'bg-white text-indigo-700 shadow-md ring-1 ring-slate-200/50'
+                                        : 'text-slate-500 hover:text-indigo-600 hover:bg-white/40'
+                                        }`}
+                                >
+                                    <Icon size={18} className={isActive ? 'text-indigo-600' : 'text-slate-400'} />
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
             {/* Tab Content */}
             <div>
-                {activeTab === 'overview' && <OverviewTab />}
+                {activeTab === 'overview' && <OverviewTab user={currentUser} />}
                 {activeTab === 'finance' && <FinanceTab />}
                 {activeTab === 'students' && <StudentsTab />}
                 {activeTab === 'inquiries' && <InquiriesTab />}

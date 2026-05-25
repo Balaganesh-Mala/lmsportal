@@ -75,11 +75,37 @@ const trainerSchema = new mongoose.Schema({
     },
     access: {
         dashboard: { type: Boolean, default: true },
+        dashboardOverview: { type: Boolean, default: true },
+        dashboardFinance: { type: Boolean, default: true },
+        dashboardStudents: { type: Boolean, default: true },
+        dashboardInquiries: { type: Boolean, default: true },
+
         studentsManagement: { type: Boolean, default: true },
+        studentsList: { type: Boolean, default: true },
+        batchStudents: { type: Boolean, default: true },
+
         coursesLearning: { type: Boolean, default: true },
+        courses: { type: Boolean, default: true },
+        trainers: { type: Boolean, default: true },
+        studyMaterials: { type: Boolean, default: true },
+
         finance: { type: Boolean, default: false },
+        feeManagement: { type: Boolean, default: false },
+        subscriptionPlans: { type: Boolean, default: false },
+        subscribers: { type: Boolean, default: false },
+        coupons: { type: Boolean, default: false },
+        expenses: { type: Boolean, default: false },
+
         marketingWebsite: { type: Boolean, default: false },
+        banners: { type: Boolean, default: false },
+        spotlights: { type: Boolean, default: false },
+        blogs: { type: Boolean, default: false },
+        reviews: { type: Boolean, default: false },
+
         communication: { type: Boolean, default: false },
+        supportInbox: { type: Boolean, default: false },
+        inquiries: { type: Boolean, default: false },
+
         settings: { type: Boolean, default: false }
     },
     createdAt: {

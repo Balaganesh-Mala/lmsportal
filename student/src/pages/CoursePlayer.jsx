@@ -5,7 +5,7 @@ import {
     PlayCircle, CheckCircle, FileText, MessageSquare, Star,
     ChevronDown, ChevronRight, ArrowRight, Download, Menu, ArrowLeft, Clock,
     Edit2, Trash2, Lock, AlertCircle, Upload, BookOpen,
-    Trophy, XCircle, SkipForward, RotateCcw, Award,
+    Trophy, XCircle, SkipForward, RotateCcw, Award, Check, X,
     Play, Pause, Volume2, VolumeX, Maximize2, Globe, ShieldCheck, Shield
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -71,6 +71,7 @@ const CoursePlayer = () => {
     const [currentQIdx, setCurrentQIdx] = useState(0);
     const [timeLeft, setTimeLeft] = useState(30);
     const [quizResult, setQuizResult] = useState(null);
+    const [showDetailedReview, setShowDetailedReview] = useState(false);
     const [shuffledQuestions, setShuffledQuestions] = useState([]); // questions with shuffled options
     const [activeQuizIndex, setActiveQuizIndex] = useState(null);
     const timerRef = useRef(null);
@@ -1587,164 +1588,525 @@ const CoursePlayer = () => {
                                                         return xId === activeId;
                                                     }) : null) || (activeQuizIndex === null ? mySubmissions.mcq : null);
                                                     if (attempt || quizPhase === 'submitted') {
-                                                         
-                                                        
-                                                        const score = attempt?.score ?? 0;
-                                                        const total = attempt?.total ?? rawQuestions.length;
-                                                        const scorePct = Math.round((score / (total || 1)) * 100);
-                                                        const isPerfect = scorePct === 100;
-                                                        const isPass = scorePct >= 75;
-                                                        const answerLookup = {};
-                                                        (attempt?.answers || []).forEach(a => { answerLookup[a.questionId] = Array.isArray(a.selected) ? a.selected : [a.selected]; });
-                                                        return (
-                                                            <div className="space-y-6">
-                                                                <div className={`relative overflow-hidden rounded-[2rem] p-8 text-center shadow-2xl ${isPerfect ? 'bg-slate-900 border border-amber-500/30' : isPass ? 'bg-slate-900 border border-emerald-500/30' : 'bg-slate-900 border border-rose-500/30'}`}>
-                                                                    <div className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[80px] opacity-20 ${isPerfect ? 'bg-amber-400' : isPass ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
-                                                                    <div className="relative z-10">
-                                                                        <div className="flex justify-center mb-6">
-                                                                            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transform rotate-6 shadow-xl ${isPerfect ? 'bg-gradient-to-br from-amber-400 to-orange-500' : isPass ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : 'bg-gradient-to-br from-rose-400 to-red-600'}`}>
-                                                                                {isPerfect ? <Trophy size={40} className="text-white" /> : isPass ? <Award size={40} className="text-white" /> : <XCircle size={40} className="text-white" />}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className={`text-7xl font-black mb-1 tracking-tighter ${isPerfect ? 'text-amber-400' : isPass ? 'text-emerald-400' : 'text-rose-400'}`}>{scorePct}<span className="text-3xl opacity-60">%</span></div>
-                                                                        <div className="text-2xl font-bold text-white mb-2">{isPerfect ? 'Absolutely Perfect!' : isPass ? 'Great Job, Passed!' : 'Requires Attention'}</div>
-                                                                        <p className="text-slate-400 text-sm">You answered <span className="text-white font-bold">{score}</span> out of <span className="text-white font-bold">{total}</span> correctly.</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="space-y-4">
-                                                                    <div className="flex items-center justify-between px-2">
-                                                                        <h3 className="font-bold text-gray-900 text-lg">Review Answers</h3>
-                                                                        <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
-                                                                            <div className="flex items-center gap-1.5 text-emerald-600"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Correct</div>
-                                                                            <div className="flex items-center gap-1.5 text-rose-600"><div className="w-2 h-2 rounded-full bg-rose-500"></div> Incorrect</div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="grid gap-4">
-                                                                        {(() => {
-                                                                            const questionsWithOrigIndex = rawQuestions.map((q, idx) => ({ ...q, originalIdx: idx }));
-                                                                            const questionsToDisplay = questionsWithOrigIndex.filter(question => {
-                                                                                if (isPass) return true; // Show all if passed
-                                                                                
-                                                                                // If failed, show only incorrect ones
-                                                                                const userSelected = answerLookup[question._id] || [];
-                                                                                const correctAnswers = question.correctAnswers || (Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer]) || [];
-                                                                                const isCorrect = userSelected.length === correctAnswers.length && userSelected.every(val => correctAnswers.includes(val));
-                                                                                return !isCorrect;
-                                                                            });
+                                                          const score = attempt?.score ?? 0;
+                                                          const total = attempt?.total ?? rawQuestions.length;
+                                                          const scorePct = Math.round((score / (total || 1)) * 100);
+                                                          const isPerfect = scorePct === 100;
+                                                          const isPass = scorePct >= 75;
+                                                          const answerLookup = {};
+                                                          (attempt?.answers || []).forEach(a => { answerLookup[a.questionId] = Array.isArray(a.selected) ? a.selected : [a.selected]; });
 
-                                                                            if (questionsToDisplay.length === 0) {
-                                                                                return (
-                                                                                    <div className="text-center py-8 text-gray-500 font-medium">
-                                                                                        No incorrect answers to review.
-                                                                                    </div>
-                                                                                );
-                                                                            }
+                                                          // Calculate unanswered
+                                                          const unanswered = Math.max(0, total - (attempt?.answers?.length || 0));
 
-                                                                            return questionsToDisplay.map((question) => {
-                                                                                const qIdx = question.originalIdx;
-                                                                                const userSelected = answerLookup[question._id] || [];
-                                                                                const correctAnswers = question.correctAnswers || (Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer]) || [];
-                                                                                const isCorrect = userSelected.length === correctAnswers.length && userSelected.every(val => correctAnswers.includes(val));
+                                                          return (
+                                                              <div className="space-y-6 max-w-4xl mx-auto animate-[fadeIn_0.4s_ease-out] font-outfit antialiased relative">
+                                                                  
+                                                                  {/* NxtWave Results Centered Modal Overlay */}
+                                                                  {(!showDetailedReview) && (
+                                                                      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-[fadeIn_0.25s_ease-out]">
+                                                                          <div className="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full p-6 md:p-8 space-y-6 border border-slate-100 animate-[scaleIn_0.3s_cubic-bezier(0.34,1.56,0.64,1)] relative">
+                                                                              
+                                                                              {/* Modal Title */}
+                                                                              <div className="text-center space-y-1.5">
+                                                                                  <h3 className="text-lg md:text-xl font-bold text-slate-800 tracking-tight">
+                                                                                      {isPerfect 
+                                                                                          ? "Congrats! Perfect Score!" 
+                                                                                          : isPass 
+                                                                                              ? "Congrats! You did well in the practice." 
+                                                                                              : "Keep practicing to improve!"
+                                                                                      }
+                                                                                  </h3>
+                                                                                  
+                                                                                  {/* Divider Row: Date & Duration */}
+                                                                                  <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-b border-slate-100 py-3 my-2">
+                                                                                      <span>{new Date(attempt?.attemptedAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}</span>
+                                                                                      <span>30S / QUESTION</span>
+                                                                                  </div>
+                                                                              </div>
 
-                                                                                return (
-                                                                                    <div key={qIdx} className={`p-5 rounded-2xl border-2 transition-all ${isCorrect ? 'border-emerald-100 bg-emerald-50/30' : 'border-rose-100 bg-rose-50/30'}`}>
-                                                                                        <div className="flex items-start gap-4">
-                                                                                            <div className={`mt-1 shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${isCorrect ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]' : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)]'} text-white`}>
-                                                                                                {isCorrect ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                                                                                            </div>
-                                                                                            <div className="flex-1 min-w-0">
-                                                                                                <p className="font-bold text-gray-800 text-sm leading-relaxed mb-4">{qIdx + 1}. {question.questionText || question.question}</p>
-                                                                                                <div className="grid gap-2">
-                                                                                                    {question.options.map((opt, oIdx) => {
-                                                                                                        const isUserChoice = userSelected.includes(opt);
-                                                                                                        const isRightChoice = correctAnswers.includes(opt);
-                                                                                                        let stateClass = "bg-white border-gray-100 text-gray-500";
-                                                                                                        if (isRightChoice) stateClass = "bg-emerald-50 border-emerald-500/50 text-emerald-700 font-bold shadow-sm";
-                                                                                                        else if (isUserChoice) stateClass = "bg-rose-50 border-rose-500/50 text-rose-700 font-bold shadow-sm";
+                                                                              {/* Split Info Grid */}
+                                                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                                                                                  
+                                                                                  {/* Left circular gauge */}
+                                                                                  <div className="flex flex-col items-center justify-center space-y-3">
+                                                                                      <div className="relative w-40 h-22 flex items-end justify-center">
+                                                                                          <svg className="absolute top-0 left-0 w-full h-full -rotate-180" viewBox="0 0 100 50">
+                                                                                              <path 
+                                                                                                  d="M 15 45 A 30 30 0 0 1 85 45" 
+                                                                                                  fill="none" 
+                                                                                                  stroke="#f1f5f9" 
+                                                                                                  strokeWidth="8" 
+                                                                                                  strokeLinecap="round" 
+                                                                                              />
+                                                                                              <path 
+                                                                                                  d="M 15 45 A 30 30 0 0 1 85 45" 
+                                                                                                  fill="none" 
+                                                                                                  stroke="#0066cc" 
+                                                                                                  strokeWidth="8" 
+                                                                                                  strokeLinecap="round" 
+                                                                                                  strokeDasharray="110" 
+                                                                                                  strokeDashoffset={110 - (110 * scorePct) / 100}
+                                                                                                  style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+                                                                                              />
+                                                                                          </svg>
+                                                                                          <div className="text-center z-10 pb-0.5 select-none">
+                                                                                              <p className="text-2xl font-black text-slate-800 leading-none">
+                                                                                                  {score}<span className="text-xs font-bold text-slate-400">/{total}</span>
+                                                                                              </p>
+                                                                                              <div className="mt-1.5">
+                                                                                                  <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
+                                                                                                      isPass ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                                                                                  }`}>
+                                                                                                      {isPass ? 'PASSED' : 'FAILED'}
+                                                                                                  </span>
+                                                                                              </div>
+                                                                                          </div>
+                                                                                      </div>
+                                                                                      {/* Gauge Legends */}
+                                                                                      <div className="flex flex-col gap-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest text-left">
+                                                                                          <div className="flex items-center gap-1.5">
+                                                                                              <span className="w-2 h-2 bg-[#0066cc] rounded-xs"></span>
+                                                                                              <span>Your Score ({scorePct}%)</span>
+                                                                                          </div>
+                                                                                          <div className="flex items-center gap-1.5">
+                                                                                              <span className="w-2 h-2 bg-slate-200 rounded-xs"></span>
+                                                                                              <span>Pass Score (75%)</span>
+                                                                                          </div>
+                                                                                      </div>
+                                                                                  </div>
 
-                                                                                                        return (
-                                                                                                            <div key={oIdx} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${stateClass} text-xs transition-all`}>
-                                                                                                                <span className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-lg ${isRightChoice ? 'bg-emerald-500 text-white' : isUserChoice ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-400'} text-[10px] font-black`}>{String.fromCharCode(65 + oIdx)}</span>
-                                                                                                                <span className="flex-1">{opt}</span>
-                                                                                                                {isRightChoice && (
-                                                                                                                    <span className="ml-auto flex items-center gap-1.5 bg-emerald-100/50 px-2 py-1 rounded-md text-[8px] font-black uppercase text-emerald-700 tracking-widest whitespace-nowrap border border-emerald-200">
-                                                                                                                        <CheckCircle size={10} /> Correct Answer
-                                                                                                                    </span>
-                                                                                                                )}
-                                                                                                                {!isRightChoice && isUserChoice && (
-                                                                                                                    <span className="ml-auto flex items-center gap-1.5 bg-rose-100/50 px-2 py-1 rounded-md text-[8px] font-black uppercase text-rose-700 tracking-widest whitespace-nowrap border border-rose-200">
-                                                                                                                        <XCircle size={10} /> Your Choice
-                                                                                                                    </span>
-                                                                                                                )}
-                                                                                                            </div>
-                                                                                                        );
-                                                                                                    })}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                );
-                                                                            });
-                                                                        })()}
-                                                                    </div>
-                                                                </div>
-                                                                {!isPass && (<button onClick={retakeQuiz} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-100"><RotateCcw size={20} /> Try Again to Pass</button>)}
-                                                            </div>
-                                                        );
-                                                    }
+                                                                                  {/* Right list checklist */}
+                                                                                  <div className="space-y-3.5 text-left border-l-0 sm:border-l border-slate-100 sm:pl-6 font-semibold text-[11px]">
+                                                                                      <div className="flex items-center gap-2 text-emerald-600">
+                                                                                          <span className="w-4 h-4 rounded-full bg-emerald-50 flex items-center justify-center text-[10px] font-bold">✓</span>
+                                                                                          <span><strong>{score}</strong> Correct Answers</span>
+                                                                                      </div>
+                                                                                      <div className="flex items-center gap-2 text-rose-600">
+                                                                                          <span className="w-4 h-4 rounded-full bg-rose-50 flex items-center justify-center text-[10px] font-bold">✕</span>
+                                                                                          <span><strong>{total - score - unanswered}</strong> Wrong Answers</span>
+                                                                                      </div>
+                                                                                      <div className="flex items-center gap-2 text-amber-600">
+                                                                                          <span className="w-4 h-4 rounded-full bg-amber-50 flex items-center justify-center text-[10px] font-bold">•</span>
+                                                                                          <span><strong>{unanswered}</strong> Unanswered</span>
+                                                                                      </div>
 
-                                                    if (quizPhase === 'idle') return (
-                                                        <div className="text-center py-12 px-4 space-y-8 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                                                            <div className="w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6"><BookOpen size={40} className="text-indigo-600" /></div>
-                                                            <h3 className="text-2xl font-extrabold text-gray-900">{test.title}</h3>
-                                                            <div className="flex flex-wrap justify-center gap-3">
-                                                                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-full"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span className="text-xs font-bold text-gray-600 uppercase">{rawQuestions.length} Questions</span></div>
-                                                                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-full"><Clock size={14} className="text-amber-500" /><span className="text-xs font-bold text-gray-600 uppercase">30s / Question</span></div>
-                                                                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-full"><Award size={14} className="text-emerald-500" /><span className="text-xs font-bold text-gray-600 uppercase">75% Passing Score</span></div>
-                                                            </div>
-                                                            <button onClick={startQuiz} className="group relative inline-flex items-center justify-center px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 shadow-lg transition-all">
-                                                                <span className="mr-2">Start Quiz</span><ArrowLeft className="rotate-180 group-hover:translate-x-1 transition-transform" size={20} />
-                                                            </button>
-                                                        </div>
-                                                    );
+                                                                                      <button 
+                                                                                          onClick={() => setShowDetailedReview(true)}
+                                                                                          className="pt-2 text-[9px] font-black text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-widest flex items-center gap-1 border-t border-slate-50 w-full"
+                                                                                      >
+                                                                                          Review Mistakes &gt;
+                                                                                      </button>
+                                                                                  </div>
 
-                                                    const timerPct = (timeLeft / 30) * 100;
-                                                    const timerColor = timeLeft > 20 ? '#6366f1' : timeLeft > 10 ? '#f59e0b' : '#ef4444';
-                                                    const isMultiple = q?.isMultiple;
-                                                    const currentAnswers = mcqAnswers[String(currentQIdx)];
-                                                    const selectedArr = Array.isArray(currentAnswers) ? currentAnswers : currentAnswers ? [currentAnswers] : [];
-                                                    return (
-                                                        <div className="space-y-5">
-                                                            <div className="flex items-center justify-between">
-                                                                <div><span className="text-sm font-medium text-gray-500">Question {currentQIdx + 1} of {activeQuestions.length}</span>{isMultiple && <span className="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-medium">Multiple Choice</span>}</div>
-                                                                <div className="relative w-12 h-12">
-                                                                    <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="#e5e7eb" strokeWidth="4" /><circle cx="24" cy="24" r="20" fill="none" stroke={timerColor} strokeWidth="4" strokeDasharray={`${2 * Math.PI * 20}`} strokeDashoffset={`${2 * Math.PI * 20 * (1 - timerPct / 100)}`} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }} /></svg>
-                                                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold" style={{ color: timerColor }}>{timeLeft}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${(currentQIdx / activeQuestions.length) * 100}%` }} /></div>
-                                                            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                                                                <p className="font-semibold text-gray-900 text-base leading-relaxed mb-1">{currentQIdx + 1}. {q?.questionText || q?.question}</p>
-                                                                {isMultiple && <p className="text-xs text-indigo-500 mb-4">Select all that apply</p>}
-                                                                <div className="space-y-2.5 mt-4">
-                                                                    {q?.options?.map((opt, oIdx) => {
-                                                                        const selected = isMultiple ? selectedArr.includes(opt) : currentAnswers === opt;
-                                                                        return (
-                                                                            <button key={oIdx} onClick={() => isMultiple ? toggleCheckbox(opt) : setMcqAnswers(prev => ({ ...prev, [String(currentQIdx)]: opt }))}
-                                                                                className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all font-medium text-sm ${selected ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:border-indigo-300 text-gray-700'}`}>
-                                                                                <span className={`shrink-0 flex items-center justify-center text-xs font-bold ${isMultiple ? `w-5 h-5 rounded border-2 ${selected ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-gray-300'}` : `w-6 h-6 rounded-full border-2 ${selected ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-gray-300'}`}`}>{selected ? '✓' : isMultiple ? '' : String.fromCharCode(65 + oIdx)}</span>
-                                                                                {opt}
-                                                                            </button>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            </div>
-                                                            <button onClick={handleNextQuestion} disabled={mcqSubmitting} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all">
-                                                                {currentQIdx < activeQuestions.length - 1 ? 'Next Question →' : mcqSubmitting ? 'Submitting...' : 'Finish Quiz ✓'}
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                })()}
+                                                                              </div>
+
+                                                                              {/* Modal Buttons */}
+                                                                              <div className="flex gap-3 pt-2">
+                                                                                  <button 
+                                                                                      onClick={retakeQuiz}
+                                                                                      className="flex-1 py-3 px-4 bg-white border border-blue-600 hover:bg-blue-50/10 text-blue-600 rounded-xl font-bold text-xs uppercase tracking-widest transition-all text-center shadow-xs"
+                                                                                  >
+                                                                                      Practice Again
+                                                                                  </button>
+                                                                                  <button 
+                                                                                      onClick={() => {
+                                                                                          if (activeQuizIndex !== null && topicContent?.mcqTests?.length > 0) {
+                                                                                              setActiveQuizIndex(null);
+                                                                                              setQuizResult(null);
+                                                                                              setQuizPhase('idle');
+                                                                                          } else {
+                                                                                              setActiveView({ type: 'video', topicId: activeTopic._id });
+                                                                                          }
+                                                                                      }}
+                                                                                      className="flex-1 py-3 px-4 bg-[#ff6600] hover:bg-[#e65c00] text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all text-center shadow-md shadow-orange-100"
+                                                                                  >
+                                                                                      Proceed to Next &gt;
+                                                                                  </button>
+                                                                              </div>
+
+                                                                          </div>
+                                                                      </div>
+                                                                  )}
+
+                                                                  {/* Backdrop Question Reviews */}
+                                                                  <div className="space-y-6">
+                                                                      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                                                                          <h3 className="font-black text-slate-800 text-lg">Detailed Review</h3>
+                                                                          <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-widest select-none">
+                                                                              <span className="flex items-center gap-1 text-emerald-650">
+                                                                                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Correct
+                                                                              </span>
+                                                                              <span className="flex items-center gap-1 text-rose-650">
+                                                                                  <span className="w-2 h-2 rounded-full bg-rose-500"></span> Incorrect
+                                                                              </span>
+                                                                          </div>
+                                                                      </div>
+
+                                                                      <div className="grid gap-6">
+                                                                          {rawQuestions.map((question, qIdx) => {
+                                                                              const userSelected = answerLookup[question._id] || [];
+                                                                              const correctAnswers = question.correctAnswers || (Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer]) || [];
+                                                                              const isCorrect = userSelected.length === correctAnswers.length && userSelected.every(val => correctAnswers.includes(val));
+
+                                                                              return (
+                                                                                  <div key={qIdx} className={`p-6 rounded-[2rem] border transition-all bg-white shadow-sm space-y-4 ${
+                                                                                      isCorrect ? 'border-emerald-100 bg-emerald-50/5' : 'border-rose-100 bg-rose-50/5'
+                                                                                  }`}>
+                                                                                      <div className="flex items-start gap-4">
+                                                                                          {/* Status circle badge on the left */}
+                                                                                          <div className={`mt-0.5 shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs ${
+                                                                                              isCorrect ? 'bg-emerald-500 shadow-md shadow-emerald-100' : 'bg-rose-500 shadow-md shadow-rose-100'
+                                                                                          }`}>
+                                                                                              {isCorrect ? <Check size={16} className="stroke-[3]" /> : <X size={16} className="stroke-[3]" />}
+                                                                                          </div>
+                                                                                          
+                                                                                          <div className="flex-1 min-w-0 space-y-3">
+                                                                                              <p className="font-extrabold text-slate-800 text-xs md:text-sm leading-relaxed">
+                                                                                                  {qIdx + 1}. {question.questionText || question.question}
+                                                                                              </p>
+
+                                                                                              <div className="grid gap-3 pt-1">
+                                                                                                  {question.options.map((opt, oIdx) => {
+                                                                                                      const isUserChoice = userSelected.includes(opt);
+                                                                                                      const isRightChoice = correctAnswers.includes(opt);
+                                                                                                      
+                                                                                                      let optionStyle = "bg-white border-slate-100 text-slate-650 hover:border-slate-200";
+                                                                                                      let letterStyle = "bg-slate-50 border border-slate-200 text-slate-450";
+                                                                                                      
+                                                                                                      if (isRightChoice) {
+                                                                                                          optionStyle = "bg-emerald-50/40 border-emerald-500 text-emerald-800 font-bold";
+                                                                                                          letterStyle = "bg-emerald-500 text-white";
+                                                                                                      } else if (isUserChoice) {
+                                                                                                          optionStyle = "bg-rose-50/40 border-rose-500 text-rose-800 font-bold";
+                                                                                                          letterStyle = "bg-rose-500 text-white";
+                                                                                                      }
+
+                                                                                                      return (
+                                                                                                          <div key={oIdx} className={`w-full flex items-center justify-between gap-4 px-5 py-3 rounded-2xl border-2 transition-all text-xs ${optionStyle}`}>
+                                                                                                              <div className="flex items-center gap-3">
+                                                                                                                  <span className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black transition-all ${letterStyle}`}>
+                                                                                                                      {String.fromCharCode(65 + oIdx)}
+                                                                                                                  </span>
+                                                                                                                  <span className="flex-1 leading-relaxed">{opt}</span>
+                                                                                                              </div>
+                                                                                                              {isRightChoice && (
+                                                                                                                  <span className="flex items-center gap-1 bg-white border border-emerald-200 text-emerald-600 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider whitespace-nowrap shadow-xs select-none">
+                                                                                                                      ✓ Correct Answer
+                                                                                                                  </span>
+                                                                                                              )}
+                                                                                                              {!isRightChoice && isUserChoice && (
+                                                                                                                  <span className="flex items-center gap-1 bg-white border border-rose-200 text-rose-600 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider whitespace-nowrap shadow-xs select-none">
+                                                                                                                      ✕ Your Choice
+                                                                                                                  </span>
+                                                                                                              )}
+                                                                                                          </div>
+                                                                                                      );
+                                                                                                  })}
+                                                                                              </div>
+                                                                                          </div>
+                                                                                      </div>
+                                                                                  </div>
+                                                                              );
+                                                                          })}
+                                                                      </div>
+                                                                  </div>
+
+                                                                  {/* Bottom Nav Action Row for mistakes review backdrop */}
+                                                                  {showDetailedReview && (
+                                                                      <div className="flex flex-col sm:flex-row gap-4 pt-6 justify-center max-w-md mx-auto">
+                                                                          <button 
+                                                                              onClick={() => {
+                                                                                  setShowDetailedReview(false);
+                                                                                  retakeQuiz();
+                                                                              }}
+                                                                              className="flex-1 py-3 px-6 bg-white border-2 border-blue-600 hover:bg-blue-50/10 text-blue-600 rounded-xl font-extrabold text-xs uppercase tracking-widest transition-all text-center shadow-sm"
+                                                                          >
+                                                                              Practice Again
+                                                                          </button>
+                                                                          <button 
+                                                                              onClick={() => {
+                                                                                  setShowDetailedReview(false);
+                                                                                  if (activeQuizIndex !== null && topicContent?.mcqTests?.length > 0) {
+                                                                                      setActiveQuizIndex(null);
+                                                                                      setQuizResult(null);
+                                                                                      setQuizPhase('idle');
+                                                                                  } else {
+                                                                                      setActiveView({ type: 'video', topicId: activeTopic._id });
+                                                                                  }
+                                                                              }}
+                                                                              className="flex-1 py-3 px-6 bg-[#ff6600] hover:bg-[#e65c00] text-white rounded-xl font-extrabold text-xs uppercase tracking-widest transition-all text-center shadow-md shadow-orange-100"
+                                                                          >
+                                                                              Proceed to Next &gt;
+                                                                          </button>
+                                                                      </div>
+                                                                  )}
+
+                                                              </div>
+                                                          );
+                                                      }
+
+                                                      if (quizPhase === 'idle') {
+                                                          return (
+                                                              <div className="max-w-3xl mx-auto animate-[fadeIn_0.4s_ease-out] font-outfit antialiased">
+                                                                  
+                                                                  {/* Clean, high-fidelity Instructions Card matching Screenshot 1 */}
+                                                                  <div className="bg-white border border-slate-200/80 shadow-md rounded-[2rem] p-6 md:p-8 space-y-6 text-left relative overflow-hidden">
+                                                                      
+                                                                      {/* Card Title Header */}
+                                                                      <h3 className="text-lg md:text-xl font-extrabold text-[#0f2e5c] tracking-tight">
+                                                                          Instructions:
+                                                                      </h3>
+
+                                                                      {/* List of high-fidelity instructions */}
+                                                                      <ol className="space-y-4 text-xs md:text-[13px] text-slate-655 leading-relaxed list-decimal pl-5">
+                                                                          <li>
+                                                                              <strong>Number of Questions:</strong> {rawQuestions.length} Items
+                                                                          </li>
+                                                                          <li>
+                                                                              <strong>Types of Questions:</strong> Multiple Choice Questions (MCQs)
+                                                                          </li>
+                                                                          <li>
+                                                                              <strong>Duration:</strong> 30 seconds / Question
+                                                                          </li>
+                                                                          <li>
+                                                                              <strong>Marking Scheme:</strong> All questions have equal weightage. Every correct response gets <strong>+1 marks</strong>.
+                                                                          </li>
+                                                                          <li>
+                                                                              <strong>Negative Marking:</strong> No negative markings in case of incorrect or unattempted responses.
+                                                                          </li>
+                                                                          <li>
+                                                                              <strong>Attempts:</strong> You can take this practice assessment as many times as you like to perfect your score.
+                                                                          </li>
+                                                                          <li>
+                                                                              <strong>Cutoff Marks:</strong> You need to score a minimum threshold of <strong>75% Marks</strong> to clear this set.
+                                                                          </li>
+                                                                          <li>
+                                                                              <strong>Skip a Question:</strong> You can navigate forward and backward between questions freely to check or change your selections.
+                                                                          </li>
+                                                                      </ol>
+
+                                                                      {/* Elegant Purple points card matching Screenshot 1 exactly */}
+                                                                      <div className="bg-[#f3f0ff] border border-[#d8b4fe] rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[#581c87] text-xs font-bold shadow-xs select-none">
+                                                                          <span>Points will be awarded based on your score in practice questions.</span>
+                                                                          <span className="flex items-center gap-1.5 bg-[#e9e3ff] px-3.5 py-1.5 rounded-xl border border-[#c084fc] tracking-wider uppercase text-[10px] text-indigo-700 font-extrabold">
+                                                                              1 Score = <span className="text-amber-500">✪</span> 1 Point
+                                                                          </span>
+                                                                      </div>
+
+                                                                      {/* Bottom start trigger row with bottom-right aligned Orange button matching Screenshot 1 */}
+                                                                      <div className="flex justify-end pt-4 border-t border-slate-100">
+                                                                          <button 
+                                                                              onClick={() => {
+                                                                                  setShowDetailedReview(false);
+                                                                                  startQuiz();
+                                                                              }} 
+                                                                              className="inline-flex items-center justify-center px-8 py-3 bg-[#ff6600] hover:bg-[#e65c00] text-white rounded-xl font-extrabold text-xs uppercase tracking-widest shadow-md shadow-orange-100 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                                                                          >
+                                                                              <span className="mr-2">Start Assessment</span>
+                                                                              <span>&gt;</span>
+                                                                          </button>
+                                                                      </div>
+
+                                                                  </div>
+
+                                                              </div>
+                                                          );
+                                                      }
+
+                                                      const timerPct = (timeLeft / 30) * 100;
+                                                      const timerColor = timeLeft > 20 ? '#0066cc' : timeLeft > 10 ? '#f59e0b' : '#ef4444';
+                                                      const isMultiple = q?.isMultiple;
+                                                      const currentAnswers = mcqAnswers[String(currentQIdx)];
+                                                      const selectedArr = Array.isArray(currentAnswers) ? currentAnswers : currentAnswers ? [currentAnswers] : [];
+
+                                                      return (
+                                                          <div className="space-y-6 max-w-4xl mx-auto animate-[fadeIn_0.3s_ease-out] font-outfit antialiased">
+                                                              
+                                                              {/* Premium Active Top Navigation Bar matching Screenshot 2 */}
+                                                              <div className="bg-white border border-slate-200/80 shadow-md rounded-2xl p-4 md:px-6 flex flex-wrap items-center justify-between gap-4 text-xs md:text-sm font-bold text-slate-700">
+                                                                  
+                                                                  {/* Left navigation arrow */}
+                                                                  <button 
+                                                                      onClick={() => {
+                                                                          if (activeQuizIndex !== null && topicContent?.mcqTests?.length > 0) {
+                                                                              setActiveQuizIndex(null);
+                                                                              setQuizResult(null);
+                                                                              setQuizPhase('idle');
+                                                                          } else {
+                                                                              setActiveView({ type: 'video', topicId: activeTopic._id });
+                                                                          }
+                                                                      }} 
+                                                                      className="text-[#0066cc] hover:text-[#004fa3] transition-colors flex items-center gap-1.5 uppercase text-[10px] tracking-wider font-extrabold"
+                                                                  >
+                                                                      ← MCQ Practice
+                                                                  </button>
+
+                                                                  {/* Center Dynamic score tracking */}
+                                                                  <div className="flex items-center gap-1 select-none">
+                                                                      <span className="text-[10px] tracking-wider text-slate-400 uppercase font-black">Score:</span>
+                                                                      <span className="text-[#0066cc] font-black text-sm md:text-base">
+                                                                          {Object.keys(mcqAnswers).length}
+                                                                      </span>
+                                                                  </div>
+
+                                                                  {/* Right items attempted tracking */}
+                                                                  <div className="text-[10px] tracking-wider text-slate-400 uppercase font-black">
+                                                                      Questions Attempted: <span className="text-slate-800 font-extrabold">{Object.keys(mcqAnswers).length}/{activeQuestions.length}</span>
+                                                                  </div>
+
+                                                              </div>
+
+                                                              {/* Sub bar instructions details */}
+                                                              <div className="flex items-center justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest px-2">
+                                                                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></span> Practice Instructions Active</span>
+                                                                  <button onClick={retakeQuiz} className="text-[#ef4444] hover:underline uppercase tracking-wider font-black">End Practice</button>
+                                                              </div>
+
+                                                              {/* Split grid main container */}
+                                                              <div className="grid grid-cols-12 gap-6 items-start">
+                                                                  
+                                                                  {/* Question and Option choices panel */}
+                                                                  <div className="col-span-12 lg:col-span-8 space-y-6">
+                                                                      
+                                                                      <div className="bg-white border border-slate-200/80 shadow-md rounded-3xl p-6 md:p-8 space-y-6">
+                                                                          
+                                                                          {/* Question Text */}
+                                                                          <div className="space-y-1.5 text-left">
+                                                                              <span className="text-[10px] font-black tracking-widest text-[#0066cc] bg-blue-50 px-2.5 py-1 rounded-lg uppercase">
+                                                                                  Question {currentQIdx + 1} of {activeQuestions.length}
+                                                                              </span>
+                                                                              <p className="font-extrabold text-slate-800 text-sm md:text-base leading-relaxed pt-2">
+                                                                                  {q?.questionText || q?.question}
+                                                                              </p>
+                                                                          </div>
+
+                                                                          {/* Option items with circle checkbox radio indicators */}
+                                                                          <div className="grid gap-3 pt-1">
+                                                                              {q?.options?.map((opt, oIdx) => {
+                                                                                  const selected = isMultiple ? selectedArr.includes(opt) : currentAnswers === opt;
+                                                                                  return (
+                                                                                      <button 
+                                                                                          key={oIdx} 
+                                                                                          onClick={() => isMultiple ? toggleCheckbox(opt) : setMcqAnswers(prev => ({ ...prev, [String(currentQIdx)]: opt }))}
+                                                                                          className={`w-full text-left flex items-start gap-4 px-5 py-3.5 rounded-2xl border-2 transition-all transform hover:scale-[1.002] active:scale-[0.998] ${
+                                                                                              selected 
+                                                                                                  ? 'border-blue-600 bg-blue-50/20 text-blue-800 shadow-sm' 
+                                                                                                  : 'border-slate-100 bg-slate-50/20 hover:border-blue-200 text-slate-655'
+                                                                                          }`}
+                                                                                      >
+                                                                                          {/* Radio Circle selector */}
+                                                                                          <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all ${
+                                                                                              selected 
+                                                                                                  ? 'border-blue-600 bg-blue-600 text-white text-[9px] font-bold' 
+                                                                                                  : 'border-slate-300 bg-white'
+                                                                                          }`}>
+                                                                                              {selected && "✓"}
+                                                                                          </span>
+                                                                                          <span className="flex-1 text-xs md:text-sm font-semibold leading-relaxed pt-0.5">
+                                                                                              {opt}
+                                                                                          </span>
+                                                                                      </button>
+                                                                                  );
+                                                                              })}
+                                                                          </div>
+
+                                                                      </div>
+
+                                                                      {/* Navigation control bar */}
+                                                                      <div className="flex gap-4">
+                                                                          {currentQIdx > 0 && (
+                                                                              <button 
+                                                                                  onClick={() => {
+                                                                                      setCurrentQIdx(prev => prev - 1);
+                                                                                      setTimeLeft(30);
+                                                                                  }}
+                                                                                  className="px-6 py-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xs flex items-center gap-1.5"
+                                                                              >
+                                                                                  <ArrowLeft size={15} /> Back
+                                                                              </button>
+                                                                          )}
+                                                                          <button 
+                                                                              onClick={handleNextQuestion} 
+                                                                              disabled={mcqSubmitting} 
+                                                                              className="flex-1 py-3.5 bg-[#ff6600] hover:bg-[#e65c00] text-white rounded-2xl font-black text-xs uppercase tracking-widest disabled:opacity-50 transition-all shadow-md shadow-orange-100 flex items-center justify-center gap-2"
+                                                                          >
+                                                                              {currentQIdx < activeQuestions.length - 1 ? (
+                                                                                  <>Next Question <ArrowRight size={15} /></>
+                                                                              ) : (
+                                                                                  mcqSubmitting ? 'Submitting...' : <>Submit Assessment ✓</>
+                                                                              )}
+                                                                          </button>
+                                                                      </div>
+
+                                                                  </div>
+
+                                                                  {/* Stopwatch and statistics panel */}
+                                                                  <div className="col-span-12 lg:col-span-4 space-y-6 lg:sticky lg:top-6">
+                                                                      
+                                                                      <div className="bg-white border border-slate-200/80 shadow-md rounded-3xl p-6 space-y-6 text-center">
+                                                                          
+                                                                          {/* Timer countdown stopwatch */}
+                                                                          <div className="flex flex-col items-center justify-center space-y-2">
+                                                                              <div className="relative w-20 h-20">
+                                                                                  <svg className="w-full h-full -rotate-90" viewBox="0 0 48 48">
+                                                                                      <circle cx="24" cy="24" r="20" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                                                                                      <circle cx="24" cy="24" r="20" fill="none" stroke={timerColor} strokeWidth="3" strokeDasharray={`${2 * Math.PI * 20}`} strokeDashoffset={`${2 * Math.PI * 20 * (1 - timerPct / 100)}`} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }} />
+                                                                                  </svg>
+                                                                                  <span className="absolute inset-0 flex items-center justify-center text-lg font-black tracking-tight" style={{ color: timerColor }}>
+                                                                                      {timeLeft}
+                                                                                  </span>
+                                                                              </div>
+                                                                              <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
+                                                                                  Seconds Remaining
+                                                                              </p>
+                                                                          </div>
+
+                                                                          {/* Progress matrix grid dots */}
+                                                                          <div className="border-t border-slate-100 pt-4 space-y-3 text-left">
+                                                                              <p className="text-[10px] text-slate-450 font-black uppercase tracking-widest">
+                                                                                  Practice Progress Map
+                                                                              </p>
+                                                                              <div className="flex flex-wrap items-center gap-2">
+                                                                                  {activeQuestions.map((_, idx) => {
+                                                                                      const isCurrent = idx === currentQIdx;
+                                                                                      const isAnswered = mcqAnswers[String(idx)] !== undefined;
+                                                                                      
+                                                                                      let dotStyle = "bg-slate-50 text-slate-400 border-slate-100";
+                                                                                      if (isCurrent) dotStyle = "bg-blue-600 text-white border-blue-600 scale-105 shadow-sm ring-4 ring-blue-50";
+                                                                                      else if (isAnswered) dotStyle = "bg-emerald-500 text-white border-emerald-500";
+
+                                                                                      return (
+                                                                                          <div 
+                                                                                              key={idx} 
+                                                                                              className={`w-7.5 h-7.5 rounded-lg border flex items-center justify-center text-[10px] font-black transition-all ${dotStyle}`}
+                                                                                          >
+                                                                                              {idx + 1}
+                                                                                          </div>
+                                                                                      );
+                                                                                  })}
+                                                                              </div>
+                                                                          </div>
+
+                                                                          {/* passing target reminder card box */}
+                                                                          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-left space-y-1">
+                                                                              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                                                  Cutoff Marks Metric
+                                                                              </span>
+                                                                              <p className="text-xs font-bold text-slate-700 leading-normal">
+                                                                                  You need to score a minimum threshold of <span className="text-[#0066cc] font-black">75% Marks</span> to successfully clear this practice set.
+                                                                              </p>
+                                                                          </div>
+
+                                                                      </div>
+
+                                                                  </div>
+
+                                                              </div>
+
+                                                          </div>
+                                                      );
+})()}
                                             </div>
                                         </div>
                                     )}

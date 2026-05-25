@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { io } from 'socket.io-client';
+import { toast } from 'react-hot-toast';
+import LiveSupport from './LiveSupport';
 
 import {
   LayoutDashboard,
@@ -36,6 +39,8 @@ import {
   Ticket
 } from 'lucide-react';
 
+const axiosInstance = axios;
+
 
 const navCategories = [
   {
@@ -59,7 +64,12 @@ const navCategories = [
     links: [
       { name: 'Courses', path: '/courses', icon: BookOpen },
       { name: 'Trainers', path: '/trainers', icon: Users },
-      { name: 'Study Materials', path: '/materials', icon: FileText },
+      { name: 'Study Materials', path: '/materials', icon: FileText }
+    ]
+  },
+  {
+    title: 'Meetings',
+    links: [
       { name: 'Meetings', path: '/meetings', icon: Calendar }
     ]
   },
@@ -103,6 +113,7 @@ const navCategories = [
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inquiryCount, setInquiryCount] = useState(0);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [inquiries, setInquiries] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -132,10 +143,76 @@ const Layout = () => {
     return user.access ? !!user.access[key] : false;
   };
 
-  const filteredCategories = navCategories.filter(category => hasAccess(category.title));
+  const hasLinkAccess = (linkName) => {
+    if (!user) return true;
+    if (user.role === 'Administrator' || user.role === 'Super Admin' || user.role === 'Admin') return true;
+
+    const linkKeyMap = {
+      'Student List': 'studentsList',
+      'Batch Students': 'batchStudents',
+      'Courses': 'courses',
+      'Trainers': 'trainers',
+      'Study Materials': 'studyMaterials',
+      'Fee Management': 'feeManagement',
+      'Subscription Plans': 'subscriptionPlans',
+      'Subscribers': 'subscribers',
+      'Coupons': 'coupons',
+      'Expenses': 'expenses',
+      'Banners': 'banners',
+      'Spotlights': 'spotlights',
+      'Blogs': 'blogs',
+      'Reviews': 'reviews',
+      'Support Inbox': 'supportInbox',
+      'Inquiries': 'inquiries'
+    };
+
+    const key = linkKeyMap[linkName];
+    if (!key) return true;
+    return user.access ? !!user.access[key] : false;
+  };
+
+  const filteredCategories = navCategories
+    .filter(category => hasAccess(category.title))
+    .map(category => ({
+      ...category,
+      links: category.links ? category.links.filter(link => hasLinkAccess(link.name)) : []
+    }))
+    .filter(category => category.links && category.links.length > 0);
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Determine if user has access to the current active path
+  const isPathAllowed = (path) => {
+    if (path === '/') return hasAccess('Dashboard');
+    
+    // Find which category this path belongs to
+    const category = navCategories.find(cat => cat.links.some(link => link.path === path || path.startsWith(link.path + '/')));
+    if (!category) return true; // Default allow for sub-routes or unlisted paths
+    
+    if (!hasAccess(category.title)) return false;
+
+    // Find the specific link
+    const link = category.links.find(link => link.path === path || path.startsWith(link.path + '/'));
+    if (link) {
+      return hasLinkAccess(link.name);
+    }
+    
+    return true;
+  };
+
+  // Perform automatic redirects based on feature access permissions
+  useEffect(() => {
+    if (!isPathAllowed(location.pathname)) {
+      // Find first accessible category and link
+      const firstCategoryWithLinks = filteredCategories.find(cat => cat.links && cat.links.length > 0);
+      if (firstCategoryWithLinks) {
+        const firstLink = firstCategoryWithLinks.links[0];
+        navigate(firstLink.path, { replace: true });
+        toast.error("Access denied. You do not have permission to view that page.");
+      }
+    }
+  }, [location.pathname, filteredCategories]);
 
   // Determine initial open category based on current path
   const getInitialCategory = () => {
@@ -156,16 +233,39 @@ const Layout = () => {
     setActiveCategory(getInitialCategory());
   }, [location.pathname]);
 
-  // Fetch settings, inquiry count, and current user
+  // Sync fresh profile from DB on every route transition (page tab change)
+  useEffect(() => {
+    const syncUser = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const meRes = await axiosInstance.get(`${apiUrl}/api/admin/me`);
+        if (meRes.data && meRes.data.success && meRes.data.user) {
+          const freshUser = meRes.data.user;
+          setUser(freshUser);
+          localStorage.setItem('adminUser', JSON.stringify(freshUser));
+        }
+      } catch (err) {
+        console.error("Failed to sync fresh user profile inside Layout transition", err);
+      }
+    };
+    syncUser();
+  }, [location.pathname]);
+
+  // Fetch settings, inquiry count, support count, and current user
   useEffect(() => {
     const fetchData = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
         // Parallel fetch for efficiency
-        const [settingsRes, inquiriesRes] = await Promise.all([
-          axios.get(`${apiUrl}/api/settings`),
-          axios.get(`${apiUrl}/api/inquiries`)
+        const [settingsRes, inquiriesRes, supportRes, meRes] = await Promise.all([
+          axiosInstance.get(`${apiUrl}/api/settings`),
+          axiosInstance.get(`${apiUrl}/api/inquiries`),
+          axiosInstance.get(`${apiUrl}/api/support/unread-count`),
+          axiosInstance.get(`${apiUrl}/api/admin/me`).catch(err => {
+            console.error("Failed to sync fresh user profile inside Layout", err);
+            return null;
+          })
         ]);
 
         if (settingsRes.data) {
@@ -177,10 +277,20 @@ const Layout = () => {
         const newCount = allInquiries.filter(i => i.status === 'new').length;
         setInquiryCount(newCount);
 
-        // Load user from localStorage instead of Supabase
-        const storedUser = localStorage.getItem('adminUser');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        if (supportRes.data) {
+          setSupportUnreadCount(supportRes.data.unreadCount || 0);
+        }
+
+        // Sync fresh profile from DB if available, otherwise fallback to local storage
+        if (meRes && meRes.data && meRes.data.success && meRes.data.user) {
+          const freshUser = meRes.data.user;
+          setUser(freshUser);
+          localStorage.setItem('adminUser', JSON.stringify(freshUser));
+        } else {
+          const storedUser = localStorage.getItem('adminUser');
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
         }
 
       } catch (err) {
@@ -190,6 +300,43 @@ const Layout = () => {
 
     fetchData();
   }, [location.pathname]);
+
+  // Socket.io for live support notifications
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const newSocket = io(apiUrl, {
+      withCredentials: true
+    });
+
+    newSocket.on('connect', () => {
+      newSocket.emit('join_admin');
+    });
+
+    newSocket.on('new_inquiry', (data) => {
+      // Re-fetch unread count
+      axiosInstance.get(`${apiUrl}/api/support/unread-count`)
+        .then(res => {
+          if (res.data) {
+            setSupportUnreadCount(res.data.unreadCount || 0);
+          }
+        })
+        .catch(err => console.error(err));
+
+      // Show browser notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        if (document.hidden || !document.hasFocus()) {
+          new Notification('💬 New Support Message', {
+            body: `${data.message?.message || 'New support inquiry received'}`,
+            icon: '/favicon.ico'
+          });
+        }
+      }
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
@@ -260,7 +407,7 @@ const Layout = () => {
             const isCategoryOpen = activeCategory === category.title || hoveredCategory === category.title;
 
             // Top level links without categories
-            if (category.title === 'Dashboard' || category.title === 'Settings') {
+            if (category.title === 'Dashboard' || category.title === 'Settings' || category.title === 'Meetings') {
               const item = category.links[0];
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -302,7 +449,7 @@ const Layout = () => {
             return (
               <div
                 key={catIndex}
-                className={`space-y-1 ${category.title === 'Communication' && inquiryCount > 0 ? 'animate-[pulse_2s_ease-in-out_infinite]' : ''}`}
+                className={`space-y-1 ${category.title === 'Communication' && (inquiryCount > 0 || supportUnreadCount > 0) ? 'animate-[pulse_2s_ease-in-out_infinite]' : ''}`}
                 onMouseEnter={() => !collapsed && setHoveredCategory(category.title)}
                 onMouseLeave={() => !collapsed && setHoveredCategory(null)}
               >
@@ -334,10 +481,10 @@ const Layout = () => {
                         <span className={`text-[13px] font-bold tracking-wide transition-colors ${isCategoryOpen ? 'text-indigo-300' : 'text-slate-400 group-hover/catBtn:text-slate-200'}`}>
                           {category.title}
                         </span>
-                        {category.title === 'Communication' && inquiryCount > 0 && (
+                        {category.title === 'Communication' && (inquiryCount > 0 || supportUnreadCount > 0) && (
                           <span className="absolute -top-1 -right-2.5 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
                         )}
-                        {category.title === 'Communication' && inquiryCount > 0 && (
+                        {category.title === 'Communication' && (inquiryCount > 0 || supportUnreadCount > 0) && (
                           <span className="absolute -top-1 -right-2.5 w-2 h-2 bg-red-500 rounded-full shadow-sm shadow-red-500/50 border border-white"></span>
                         )}
                       </div>
@@ -357,8 +504,14 @@ const Layout = () => {
                     <div className="flex flex-col gap-0.5 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-800 before:-z-10 pl-2 pr-1 pb-1">
                       {category.links.map((item) => {
                         const isActive = location.pathname === item.path;
-                        const hasBadge = item.badge || (item.name === 'Inquiries' && inquiryCount > 0);
-                        const badgeValue = item.name === 'Inquiries' && inquiryCount > 0 ? inquiryCount : item.badge;
+                        const hasBadge = item.badge || 
+                          (item.name === 'Inquiries' && inquiryCount > 0) ||
+                          (item.name === 'Support Inbox' && supportUnreadCount > 0);
+                        const badgeValue = item.name === 'Inquiries' && inquiryCount > 0 
+                          ? inquiryCount 
+                          : item.name === 'Support Inbox' && supportUnreadCount > 0
+                          ? supportUnreadCount
+                          : item.badge;
 
                         return (
                           <Link
@@ -398,32 +551,66 @@ const Layout = () => {
           })}
         </nav>
 
+
+
+
+
+
+
+
+
+
         {/* Sidebar Footer - Dedicated Profile Tab Card */}
         {user && (
           <div className={`p-4 border-t border-slate-800/80 bg-slate-900/40 mt-auto shrink-0 flex ${collapsed ? 'flex-col items-center gap-3' : 'items-center gap-2'}`}>
-            <Link
-              to="/settings"
-              title="Admin Settings"
-              className="flex items-center gap-3 p-2 rounded-xl border border-slate-800 text-slate-350 hover:text-white transition-all duration-300 hover:bg-slate-850/60 w-full justify-center"
-            >
-              <div className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-black text-sm border border-slate-700">
-                  {userInitial}
+            {hasAccess('Settings') ? (
+              <Link
+                to="/settings"
+                title="Admin Settings"
+                className="flex items-center gap-3 p-2 rounded-xl border border-slate-800 text-slate-350 hover:text-white transition-all duration-300 hover:bg-slate-850/60 w-full justify-center animate-all"
+              >
+                <div className="relative shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-black text-sm border border-slate-700">
+                    {userInitial}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
-              </div>
 
-              {!collapsed && (
-                <div className="flex-1 min-w-0 flex flex-col text-left">
-                  <span className="text-[13px] font-bold truncate uppercase tracking-tight leading-tight text-white">
-                    {userName}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                    Administrator
-                  </span>
+                {!collapsed && (
+                  <div className="flex-1 min-w-0 flex flex-col text-left">
+                    <span className="text-[13px] font-bold truncate uppercase tracking-tight leading-tight text-white">
+                      {userName}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                      {user.role || 'Administrator'}
+                    </span>
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <div
+                title="User Profile"
+                className="flex items-center gap-3 p-2 rounded-xl border border-slate-800 text-slate-350 w-full justify-center cursor-default bg-slate-900/10"
+              >
+                <div className="relative shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center font-black text-sm border border-slate-700">
+                    {userInitial}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
                 </div>
-              )}
-            </Link>
+
+                {!collapsed && (
+                  <div className="flex-1 min-w-0 flex flex-col text-left">
+                    <span className="text-[13px] font-bold truncate uppercase tracking-tight leading-tight text-white">
+                      {userName}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                      {user.role || 'Trainer'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
             <button
               onClick={handleLogout}
               title="Sign Out"
@@ -453,6 +640,10 @@ const Layout = () => {
           </div>
         </main>
       </div>
+      {/* Live Support Floating Chat Widget for trainers and sub-admins */}
+      {user && user.role !== 'Admin' && user.role !== 'Administrator' && user.role !== 'Super Admin' && (
+        <LiveSupport />
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { User, Mail, MapPin, Briefcase, Linkedin, Github, Globe, GraduationCap, Plus, Trash2, Camera, Save, Loader2, ArrowLeft } from 'lucide-react';
+import { User, Mail, MapPin, Briefcase, GraduationCap, Camera, Save, Loader2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
@@ -21,7 +21,6 @@ const Profile = () => {
     });
     const [profilePreview, setProfilePreview] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
-    const [activeTab, setActiveTab] = useState('about'); // about, socials, education
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -65,52 +64,9 @@ const Profile = () => {
         }
     };
 
-    const handleInputChange = (e, section = null) => {
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
-        if (section) {
-            setFormData(prev => ({
-                ...prev,
-                [section]: { ...prev[section], [name]: value }
-            }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
-    };
-
-    const handleEducationChange = (index, field, value) => {
-        const newEducation = [...formData.education];
-        newEducation[index][field] = value;
-        setFormData(prev => ({ ...prev, education: newEducation }));
-    };
-
-    const addEducation = () => {
-        setFormData(prev => ({
-            ...prev,
-            education: [...prev.education, { degree: '', institution: '', year: '' }]
-        }));
-    };
-
-    const removeEducation = (index) => {
-        const newEducation = formData.education.filter((_, i) => i !== index);
-        setFormData(prev => ({ ...prev, education: newEducation }));
-    };
-
-    const handleCertificationChange = (index, field, value) => {
-        const newCerts = [...formData.certifications];
-        newCerts[index][field] = value;
-        setFormData(prev => ({ ...prev, certifications: newCerts }));
-    };
-
-    const addCertification = () => {
-        setFormData(prev => ({
-            ...prev,
-            certifications: [...prev.certifications, { name: '', organization: '', year: '' }]
-        }));
-    };
-
-    const removeCertification = (index) => {
-        const newCerts = formData.certifications.filter((_, i) => i !== index);
-        setFormData(prev => ({ ...prev, certifications: newCerts }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -155,210 +111,129 @@ const Profile = () => {
     if (loading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin text-indigo-600" size={40} /></div>;
 
     return (
-        <div className="max-w-5xl mx-auto px-4 py-8">
-            <button onClick={() => navigate('/dashboard')} className="mb-6 flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors">
-                <ArrowLeft size={20} /> Back to Dashboard
+        <div className="max-w-2xl mx-auto px-4 py-8 font-outfit antialiased">
+            <button onClick={() => navigate('/dashboard')} className="mb-6 flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors text-sm font-semibold">
+                <ArrowLeft size={16} /> Back to Dashboard
             </button>
 
-            <div className="flex flex-col md:flex-row gap-8">
-                {/* Left: Profile Card */}
-                <div className="md:w-1/3">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center sticky top-24">
-                        <div className="relative group mb-4">
-                            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg ring-2 ring-indigo-50">
-                                {profilePreview ? (
-                                    <img src={profilePreview} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 text-4xl font-bold">
-                                        {user.name.charAt(0)}
-                                    </div>
-                                )}
-                            </div>
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
-                            >
-                                <Camera size={16} />
-                            </button>
-                            <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="image/*" />
-                        </div>
+            <div className="bg-white rounded-[2rem] shadow-md border border-slate-200/80 p-8 space-y-8 text-center relative overflow-hidden">
+                {/* Visual decorative circles */}
+                <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-50/40 rounded-full blur-[80px] pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-50/35 rounded-full blur-[80px] pointer-events-none"></div>
 
-                        <h2 className="text-xl font-bold text-gray-900 text-center">{user.name}</h2>
-                        <input
-                            name="headline"
-                            value={formData.headline}
-                            onChange={handleInputChange}
-                            placeholder="Add a headline (e.g. Financial Analyst or Accountant)"
-                            className="text-sm text-center text-gray-500 mt-1 py-1 w-full border-b border-gray-300 hover:border-gray-400 focus:border-indigo-500 focus:outline-none bg-transparent"
-                        />
-
-                        <div className="mt-6 w-full space-y-3">
-                            <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                <Mail size={16} className="text-indigo-500" />
-                                <span className="truncate">{user.email}</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                <MapPin size={16} className="text-indigo-500" />
-                                <span>{user.city || 'Location not set'}</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                <GraduationCap size={16} className="text-indigo-500" />
-                                <span>{user.courseName}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right: Tabs & Forms */}
-                <div className="md:w-2/3 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Tabs */}
-                    <div className="flex border-b border-gray-100 overflow-x-auto">
-                        {['about', 'socials', 'education', 'certifications'].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`flex-1 py-4 text-sm font-semibold capitalize transition-all ${activeTab === tab
-                                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
+                <div className="relative z-10 flex flex-col items-center">
+                    
+                    {/* Header */}
+                    <div className="mb-6 text-center space-y-1">
+                        <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Student Profile</h2>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Manage your portal representation</p>
                     </div>
 
-                    <div className="p-6">
-                        {activeTab === 'about' && (
-                            <div className="space-y-4 animate-in fade-in duration-300">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">About Me</label>
-                                    <textarea
-                                        name="bio"
-                                        value={formData.bio}
-                                        onChange={handleInputChange}
-                                        rows={6}
-                                        placeholder="Tell us about yourself..."
-                                        className="w-full rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 text-sm p-3"
-                                    ></textarea>
+                    {/* Profile Picture Uploader */}
+                    <div className="relative group mb-6">
+                        <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-white shadow-xl ring-2 ring-indigo-100/50 transition-transform duration-300 group-hover:scale-[1.02]">
+                            {profilePreview ? (
+                                <img src={profilePreview} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 text-5xl font-black">
+                                    {user?.name?.charAt(0).toUpperCase()}
                                 </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'socials' && (
-                            <div className="space-y-4 animate-in fade-in duration-300">
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                        <Linkedin size={16} className="text-[#0077b5]" /> LinkedIn URL
-                                    </label>
-                                    <input
-                                        name="linkedin"
-                                        value={formData.socials.linkedin}
-                                        onChange={(e) => handleInputChange(e, 'socials')}
-                                        placeholder="https://linkedin.com/in/..."
-                                        className="w-full rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 text-sm px-3 py-2"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                        <Briefcase size={16} className="text-blue-500" /> Naukri Profile URL
-                                    </label>
-                                    <input
-                                        name="naukri"
-                                        value={formData.socials.naukri}
-                                        onChange={(e) => handleInputChange(e, 'socials')}
-                                        placeholder="https://naukri.com/mnj/..."
-                                        className="w-full rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 text-sm px-3 py-2"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'education' && (
-                            <div className="space-y-4 animate-in fade-in duration-300">
-                                {formData.education.map((edu, index) => (
-                                    <div key={index} className="flex flex-col md:flex-row gap-3 p-4 bg-gray-50 rounded-xl relative group">
-                                        <button onClick={() => removeEducation(index)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Trash2 size={16} />
-                                        </button>
-                                        <div className="flex-1 flex flex-col gap-2">
-                                            <input
-                                                value={edu.degree}
-                                                onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
-                                                placeholder="Degree (e.g. B.Com Accounting)"
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold focus:border-indigo-500 focus:ring-indigo-500 outline-none placeholder-gray-400"
-                                            />
-                                            <input
-                                                value={edu.institution}
-                                                onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
-                                                placeholder="Institution Name"
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 focus:border-indigo-500 focus:ring-indigo-500 outline-none placeholder-gray-400"
-                                            />
-                                        </div>
-                                        <div className="w-full md:w-32">
-                                            <input
-                                                value={edu.year}
-                                                onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
-                                                placeholder="Year (e.g. 2024)"
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                                <button onClick={addEducation} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-indigo-500 hover:text-indigo-600 flex items-center justify-center gap-2 transition-colors">
-                                    <Plus size={18} /> Add Education
-                                </button>
-                            </div>
-                        )}
-
-                        {activeTab === 'certifications' && (
-                            <div className="space-y-4 animate-in fade-in duration-300">
-                                {formData.certifications.map((cert, index) => (
-                                    <div key={index} className="flex flex-col md:flex-row gap-3 p-4 bg-gray-50 rounded-xl relative group">
-                                        <button onClick={() => removeCertification(index)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Trash2 size={16} />
-                                        </button>
-                                        <div className="flex-1 flex flex-col gap-2">
-                                            <input
-                                                value={cert.name}
-                                                onChange={(e) => handleCertificationChange(index, 'name', e.target.value)}
-                                                placeholder="Certification Name (e.g. Tally Prime Professional)"
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold focus:border-indigo-500 focus:ring-indigo-500 outline-none placeholder-gray-400"
-                                            />
-                                            <input
-                                                value={cert.organization}
-                                                onChange={(e) => handleCertificationChange(index, 'organization', e.target.value)}
-                                                placeholder="Issuing Organization (e.g. Tally Education)"
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 focus:border-indigo-500 focus:ring-indigo-500 outline-none placeholder-gray-400"
-                                            />
-                                        </div>
-                                        <div className="w-full md:w-32">
-                                            <input
-                                                value={cert.year}
-                                                onChange={(e) => handleCertificationChange(index, 'year', e.target.value)}
-                                                placeholder="Year"
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                                <button onClick={addCertification} className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-indigo-500 hover:text-indigo-600 flex items-center justify-center gap-2 transition-colors">
-                                    <Plus size={18} /> Add Certification
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Save Button */}
-                        <div className="mt-8 flex justify-end">
-                            <button
-                                onClick={handleSubmit}
-                                disabled={saving}
-                                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold shadow-md hover:bg-indigo-700 transition-all disabled:opacity-50"
-                            >
-                                {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                                Save Changes
-                            </button>
+                            )}
                         </div>
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute bottom-1 right-1 bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-full shadow-lg transition-all duration-300 transform group-hover:scale-110"
+                        >
+                            <Camera size={18} />
+                        </button>
+                        <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="image/*" />
                     </div>
+
+                    {/* Student Form fields */}
+                    <div className="w-full max-w-md space-y-5 text-left">
+                        
+                        {/* Name Input (Readonly) */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                <User size={12} /> Student Name
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={user?.name || ''}
+                                    disabled
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 rounded-xl px-4 py-3 text-xs md:text-sm font-semibold cursor-not-allowed select-none outline-none"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider select-none">
+                                    Official
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Email Input (Readonly) */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                <Mail size={12} /> Email Address
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={user?.email || ''}
+                                    disabled
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 rounded-xl px-4 py-3 text-xs md:text-sm font-semibold cursor-not-allowed select-none outline-none"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider select-none">
+                                    Official
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Course Name (Readonly) */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                <GraduationCap size={12} /> Registered Course
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={user?.courseName || ''}
+                                    disabled
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 rounded-xl px-4 py-3 text-xs md:text-sm font-semibold cursor-not-allowed select-none outline-none"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider select-none">
+                                    Official
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Headline (Editable) */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-1.5">
+                                <Briefcase size={12} /> Professional Headline
+                            </label>
+                            <input
+                                name="headline"
+                                value={formData.headline}
+                                onChange={handleInputChange}
+                                placeholder="e.g. Financial Analyst & Accountant"
+                                className="w-full bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-slate-700 rounded-xl px-4 py-3 text-xs md:text-sm font-semibold outline-none transition-all placeholder-slate-300 shadow-sm"
+                            />
+                        </div>
+
+                    </div>
+
+                    {/* Actions */}
+                    <div className="w-full max-w-md pt-6 border-t border-slate-100 mt-6 flex justify-end">
+                        <button
+                            onClick={handleSubmit}
+                            disabled={saving}
+                            className="flex items-center justify-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs md:text-sm shadow-md shadow-indigo-100 transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+                        >
+                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                            Save Profile Changes
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </div>

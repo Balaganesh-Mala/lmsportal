@@ -291,11 +291,13 @@ const SupportInbox = () => {
                                     onClick={() => setSelectedChat(chat)}
                                     className={`w-full p-4 flex items-start gap-3 transition-all text-left ${selectedChat?.studentInfo?._id === chat.studentInfo._id ? 'bg-[#436BB5]/30 border-l-4 border-indigo-400' : 'border-l-4 border-transparent hover:bg-[#25324b]'}`}
                                 >
-                                    {/* Student avatar in sidebar */}
+                                    {/* User avatar in sidebar */}
                                     <div className="w-12 h-12 rounded-2xl shrink-0 overflow-hidden border border-[#2d3a54]">
-                                        {chat.studentInfo.profilePicture ? (
+                                        {chat.studentInfo.profilePicture || chat.studentInfo.photo ? (
                                             <img
-                                                src={chat.studentInfo.profilePicture.startsWith('http') ? chat.studentInfo.profilePicture : `${API_URL}/${chat.studentInfo.profilePicture}`}
+                                                src={(chat.studentInfo.profilePicture || chat.studentInfo.photo).startsWith('http') 
+                                                    ? (chat.studentInfo.profilePicture || chat.studentInfo.photo) 
+                                                    : `${API_URL}/${chat.studentInfo.profilePicture || chat.studentInfo.photo}`}
                                                 alt=""
                                                 className="w-full h-full object-cover"
                                             />
@@ -346,11 +348,13 @@ const SupportInbox = () => {
                                 >
                                     <ChevronLeft size={24} />
                                 </button>
-                                {/* Student avatar in chat header */}
+                                {/* User avatar in chat header */}
                                 <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-slate-100">
-                                    {selectedChat.studentInfo.profilePicture ? (
+                                    {selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo ? (
                                         <img
-                                            src={selectedChat.studentInfo.profilePicture.startsWith('http') ? selectedChat.studentInfo.profilePicture : `${API_URL}/${selectedChat.studentInfo.profilePicture}`}
+                                            src={(selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo).startsWith('http') 
+                                                ? (selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo) 
+                                                : `${API_URL}/${selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo}`}
                                             alt=""
                                             className="w-full h-full object-cover"
                                         />
@@ -394,9 +398,11 @@ const SupportInbox = () => {
                                 >
                                     {/* Profile Photo */}
                                     <div className="flex flex-col items-center pt-8 pb-4 px-6">
-                                        {selectedChat.studentInfo.profilePicture ? (
+                                        {selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo ? (
                                             <img
-                                                src={selectedChat.studentInfo.profilePicture.startsWith('http') ? selectedChat.studentInfo.profilePicture : `${API_URL}/${selectedChat.studentInfo.profilePicture}`}
+                                                src={(selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo).startsWith('http') 
+                                                    ? (selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo) 
+                                                    : `${API_URL}/${selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo}`}
                                                 alt=""
                                                 className="w-20 h-20 rounded-full object-cover ring-4 ring-indigo-100 shadow-md mb-3"
                                             />
@@ -444,16 +450,18 @@ const SupportInbox = () => {
                                     key={idx}
                                     className={`flex items-start gap-2 ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    {/* Student Avatar - clickable */}
-                                    {msg.sender === 'student' && (
+                                    {/* User Avatar - clickable */}
+                                    {msg.sender !== 'admin' && (
                                         <button
                                             onClick={() => setShowStudentCard(true)}
                                             className="shrink-0 mt-1 group relative"
-                                            title="View student details"
+                                            title="View user details"
                                         >
-                                            {selectedChat.studentInfo.profilePicture ? (
+                                            {selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo ? (
                                                 <img
-                                                    src={selectedChat.studentInfo.profilePicture.startsWith('http') ? selectedChat.studentInfo.profilePicture : `${API_URL}/${selectedChat.studentInfo.profilePicture}`}
+                                                    src={(selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo).startsWith('http') 
+                                                        ? (selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo) 
+                                                        : `${API_URL}/${selectedChat.studentInfo.profilePicture || selectedChat.studentInfo.photo}`}
                                                     alt=""
                                                     className="w-8 h-8 rounded-full object-cover ring-2 ring-white shadow-md group-hover:ring-indigo-300 transition-all"
                                                 />
@@ -493,27 +501,27 @@ const SupportInbox = () => {
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Type your response to the student..."
-                                    className="flex-1 bg-transparent border-none outline-none text-sm py-2"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!newMessage.trim()}
-                                    className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 active:scale-95"
-                                >
-                                    <Send size={18} />
-                                </button>
-                            </div>
-                        </form>
-                    </>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
-                        <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                            <Headset size={48} strokeWidth={1} />
+                                placeholder="Type your response..."
+                                className="flex-1 bg-transparent border-none outline-none text-sm py-2"
+                            />
+                            <button
+                                type="submit"
+                                disabled={!newMessage.trim()}
+                                className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 active:scale-95"
+                            >
+                                <Send size={18} />
+                            </button>
                         </div>
-                        <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest">Select a Conversation</h3>
-                        <p className="text-sm font-medium mt-2">Pick a student from the left to start helping them real-time.</p>
+                    </form>
+                </>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+                    <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                        <Headset size={48} strokeWidth={1} />
                     </div>
+                    <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest">Select a Conversation</h3>
+                    <p className="text-sm font-medium mt-2">Pick a conversation from the left to start helping them real-time.</p>
+                </div>
                 )}
             </div>
         </div>

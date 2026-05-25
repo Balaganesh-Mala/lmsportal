@@ -137,14 +137,10 @@ const Subscription = () => {
 
                         if (verifyRes.data.success) {
                             toast.success("Subscription Activated!");
-                            // Save complete updated user to localStorage
+                            // Save complete updated user to localStorage with updated access controls
                             const updatedUser = { 
                                 ...user, 
-                                isSubscribed: true,
-                                planTier: verifyRes.data.student.planTier,
-                                activePlan: verifyRes.data.student.activePlan,
-                                subscriptionExpiresAt: verifyRes.data.student.subscriptionExpiresAt,
-                                subscriptionStartedAt: verifyRes.data.student.subscriptionStartedAt
+                                ...verifyRes.data.student
                             };
                             localStorage.setItem('studentUser', JSON.stringify(updatedUser));
                             window.location.href = '/dashboard'; // Force reload to refresh permissions
