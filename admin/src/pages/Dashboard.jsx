@@ -149,7 +149,6 @@ function OverviewTab({ user: propUser }) {
         { title: 'Active Batches', value: stats.activeBatches, icon: Layers, iconColor: 'text-violet-600', iconBg: 'bg-violet-50', sub: `${stats.upcomingBatches} upcoming`, key: 'students' },
         { title: 'New Inquiries', value: stats.newInquiries, icon: MessageSquare, iconColor: 'text-rose-600', iconBg: 'bg-rose-50', sub: 'Awaiting response', trend: 'New', trendPositive: false, key: 'inquiries' },
         { title: 'Fees This Month', value: `₹${stats.feesThisMonth.toLocaleString()}`, icon: IndianRupee, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50', trend: 'Collected', trendPositive: true, key: 'finance' },
-        { title: 'Pending Fees', value: `₹${stats.pendingFees.toLocaleString()}`, icon: AlertCircle, iconColor: 'text-amber-600', iconBg: 'bg-amber-50', sub: 'Outstanding', key: 'finance' },
         { title: 'Upcoming Meetings', value: stats.upcomingMeetings, icon: CalendarCheck, iconColor: 'text-sky-600', iconBg: 'bg-sky-50', sub: 'Scheduled ahead', key: 'meetings' },
     ];
 
@@ -158,7 +157,7 @@ function OverviewTab({ user: propUser }) {
     return (
         <div className="space-y-8">
             {/* KPI Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {allowedKpis.map((k, i) => <StatCard key={i} {...k} />)}
             </div>
 
@@ -248,7 +247,6 @@ function FinanceTab() {
             head: [['Financial Metric', 'Amount (INR)']],
             body: [
                 ['Total Fees Collected', `Rs. ${data.summaryStats.totalFeesCollected.toLocaleString()}`],
-                ['Pending Fees', `Rs. ${data.summaryStats.pendingFees.toLocaleString()} (${data.summaryStats.pendingCount} students)`],
                 ['Total Expenses', `Rs. ${data.summaryStats.totalExpenses.toLocaleString()}`],
                 ['Net Profit', `Rs. ${data.summaryStats.netProfit.toLocaleString()}`],
             ],
@@ -271,7 +269,6 @@ function FinanceTab() {
 
     const summaryCards = [
         { title: 'Total Fees Collected', value: `₹${summaryStats.totalFeesCollected.toLocaleString()}`, trend: 'All time', isPositive: true, icon: IndianRupee, color: 'text-emerald-500', bgColor: 'bg-emerald-50' },
-        { title: 'Pending Fees', value: `₹${summaryStats.pendingFees.toLocaleString()}`, trend: `${summaryStats.pendingCount} Installments`, isPositive: false, icon: AlertCircle, color: 'text-amber-500', bgColor: 'bg-amber-50' },
         { title: 'Total Expenses', value: `₹${summaryStats.totalExpenses.toLocaleString()}`, trend: 'All time', isPositive: true, icon: Wallet, color: 'text-red-500', bgColor: 'bg-red-50' },
         { title: 'Net Profit', value: `₹${summaryStats.netProfit.toLocaleString()}`, trend: 'Estimated', isPositive: summaryStats.netProfit >= 0, icon: summaryStats.netProfit >= 0 ? TrendingUp : TrendingDown, color: summaryStats.netProfit >= 0 ? 'text-blue-500' : 'text-orange-500', bgColor: summaryStats.netProfit >= 0 ? 'bg-blue-50' : 'bg-orange-50' },
     ];
@@ -295,7 +292,7 @@ function FinanceTab() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {summaryCards.map((stat, i) => {
                     const Icon = stat.icon;
                     return (

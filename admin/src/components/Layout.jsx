@@ -90,7 +90,6 @@ const navCategories = [
     links: [
       { name: 'Banners', path: '/banners', icon: Image },
       { name: 'Spotlights', path: '/announcements', icon: Megaphone },
-      { name: 'Blogs', path: '/blogs', icon: FileText },
       { name: 'Reviews', path: '/reviews', icon: Users }
     ]
   },
@@ -160,7 +159,6 @@ const Layout = () => {
       'Expenses': 'expenses',
       'Banners': 'banners',
       'Spotlights': 'spotlights',
-      'Blogs': 'blogs',
       'Reviews': 'reviews',
       'Support Inbox': 'supportInbox',
       'Inquiries': 'inquiries'

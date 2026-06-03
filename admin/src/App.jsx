@@ -16,7 +16,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Inquiries from './pages/Inquiries';
 import Courses from './pages/Courses';
 import ManageCourseModules from './pages/ManageCourseModules';
-import Blogs from './pages/Blogs';
 import AddTrainer from './pages/AddTrainer'; // New
 import TrainerList from './pages/TrainerList'; // New
 import TrainerDetails from './pages/TrainerDetails'; // New
@@ -61,7 +60,6 @@ function App() {
           <Route path="courses/:courseId/modules" element={<ManageCourseModules />} />
           <Route path="fees" element={<FeeManagement />} />
           <Route path="expenses" element={<ExpenseManagement />} />
-          <Route path="blogs" element={<Blogs />} />
           <Route path="inquiries" element={<Inquiries />} />
           <Route path="settings" element={<Settings />} />
           <Route path="subscription-settings" element={<SubscriptionSettings />} />
