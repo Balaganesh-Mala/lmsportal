@@ -20,8 +20,14 @@ exports.loginTrainer = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email and password are required' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
         // Check for trainer
-        const trainer = await Trainer.findOne({ email })
+        const trainer = await Trainer.findOne({ email: normalizedEmail })
             .populate('hiringRounds.mcq.testId')
             .populate('hiringRounds.video.testId')
             .populate('hiringRounds.assignment.testId');

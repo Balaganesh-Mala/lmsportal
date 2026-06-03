@@ -196,11 +196,11 @@ router.post('/assign-bonus', async (req, res) => {
             const course = await Course.findById(courseId);
             if (!course) return res.status(404).json({ message: 'Course not found' });
             
-            let genericBatch = await Batch.findOne({ courseId: course._id, name: /Bonus/i });
+            let genericBatch = await Batch.findOne({ courses: course._id, name: /Bonus/i });
             if (!genericBatch) {
                 genericBatch = new Batch({
                     name: `Auto Bonus Batch - ${course.title.substring(0, 15)}`,
-                    courseId: course._id,
+                    courses: [course._id],
                     startDate: new Date(),
                     endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 5)),
                     maxStudents: 5000,

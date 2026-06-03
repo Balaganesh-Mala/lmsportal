@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
     Copy, ExternalLink, Shield, Upload, X, Check, Search, 
     Edit2, Image as ImageIcon, PlusCircle, Plus, Trash2, FileText, Video, 
-    Link as LinkIcon, Globe, LayoutGrid
+    Link as LinkIcon, Globe, LayoutGrid, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -453,25 +453,26 @@ const StudyMaterialsManagement = () => {
                                     </button>
                                 </div>
 
-                                {/* Access Tier Selection */}
-                                <div className="p-4 bg-indigo-50/30 rounded-xl border border-indigo-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <Layers size={16} className="text-indigo-600" />
-                                        <div className="text-left">
-                                            <span className="block text-xs font-bold text-slate-800 leading-none">Access Tier</span>
-                                            <span className="text-[10px] text-slate-500 mt-1 block">Tier required for students</span>
-                                        </div>
-                                    </div>
-                                    <select 
-                                        value={formData.requiredTier}
-                                        onChange={(e) => setFormData({ ...formData, requiredTier: e.target.value })}
-                                        className="bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold text-indigo-900 focus:outline-none"
-                                    >
-                                        <option value="Basic">Basic</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Full">Full</option>
-                                    </select>
-                                </div>
+                                 {/* Access Tier Selection */}
+                                 <div className="p-4 bg-indigo-50/30 rounded-xl border border-indigo-100 flex items-center justify-between">
+                                     <div className="flex items-center gap-2.5">
+                                         <Layers size={16} className="text-indigo-600" />
+                                         <div className="text-left">
+                                             <span className="block text-xs font-bold text-slate-800 leading-none">Access Tier</span>
+                                             <span className="text-[10px] text-slate-500 mt-1 block">Tier required for students</span>
+                                         </div>
+                                     </div>
+                                     <select 
+                                         value={formData.requiredTier}
+                                         onChange={(e) => setFormData({ ...formData, requiredTier: e.target.value })}
+                                         className="bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold text-indigo-900 focus:outline-none"
+                                     >
+                                         <option value="Basic">Basic</option>
+                                         <option value="Premium">Premium</option>
+                                         <option value="Gold">Gold</option>
+                                         <option value="Platinum">Platinum</option>
+                                     </select>
+                                 </div>
 
                                 {/* Dynamic Input Area */}
                                 <div className="pt-2">

@@ -94,6 +94,15 @@ const Register = () => {
         finally { setLoading(false); }
     };
 
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
+        if (step < 3) {
+            nextStep();
+        } else {
+            submit();
+        }
+    };
+
     const rev = reviews[revIdx];
     const statCards = [
         { label: 'Today', val: stats.today, icon: Calendar, g: 'from-violet-500 to-purple-600' },
@@ -224,10 +233,15 @@ const Register = () => {
                             </div>
                         </div>
 
-                        <AnimatePresence mode="wait">
+                        <form onSubmit={handleFormSubmit} className="space-y-6">
                             {/* STEP 1 */}
-                            {step === 1 && (
-                                <motion.div key="s1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
+                            <div className={step === 1 ? 'block' : 'hidden'}>
+                                <motion.div
+                                    initial={{ opacity: 0, x: 30 }}
+                                    animate={step === 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="space-y-4"
+                                >
                                     <div className="grid grid-cols-2 gap-4">
                                         {[['firstName', 'First Name', 'John'], ['lastName', 'Last Name', 'Doe']].map(([k, label, ph]) => (
                                             <div key={k}>
@@ -264,11 +278,16 @@ const Register = () => {
                                         </div>
                                     </div>
                                 </motion.div>
-                            )}
+                            </div>
 
                             {/* STEP 2 */}
-                            {step === 2 && (
-                                <motion.div key="s2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
+                            <div className={step === 2 ? 'block' : 'hidden'}>
+                                <motion.div
+                                    initial={{ opacity: 0, x: 30 }}
+                                    animate={step === 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="space-y-4"
+                                >
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className={labelCls}>Date of Birth</label>
@@ -310,11 +329,16 @@ const Register = () => {
                                         </div>
                                     </div>
                                 </motion.div>
-                            )}
+                            </div>
 
                             {/* STEP 3 */}
-                            {step === 3 && (
-                                <motion.div key="s3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-5">
+                            <div className={step === 3 ? 'block' : 'hidden'}>
+                                <motion.div
+                                    initial={{ opacity: 0, x: 30 }}
+                                    animate={step === 3 ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="space-y-5"
+                                >
                                     <div>
                                         <label className={labelCls}>Select Class / Batch</label>
                                         <div className="relative">
@@ -354,33 +378,33 @@ const Register = () => {
                                         </p>
                                     </div>
                                 </motion.div>
-                            )}
-                        </AnimatePresence>
+                            </div>
 
-                        {/* Nav Buttons */}
-                        <div className="flex items-center justify-between mt-7 pt-5 border-t border-gray-100">
-                            {step > 1 ? (
-                                <button onClick={() => setStep(s => s - 1)}
-                                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
-                                    ← Back
-                                </button>
-                            ) : (
-                                <Link to="/login" className="text-sm text-gray-500 hover:text-violet-600 font-medium transition-colors">Already have an account?</Link>
-                            )}
-                            {step < 3 ? (
-                                <button onClick={nextStep}
-                                    className="px-7 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
-                                    style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>
-                                    Continue →
-                                </button>
-                            ) : (
-                                <button onClick={submit} disabled={loading}
-                                    className="px-7 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-70 flex items-center gap-2"
-                                    style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>
-                                    {loading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating...</> : 'Complete Registration ✓'}
-                                </button>
-                            )}
-                        </div>
+                            {/* Nav Buttons */}
+                            <div className="flex items-center justify-between mt-7 pt-5 border-t border-gray-100">
+                                {step > 1 ? (
+                                    <button type="button" onClick={() => setStep(s => s - 1)}
+                                        className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
+                                        ← Back
+                                    </button>
+                                ) : (
+                                    <Link to="/login" className="text-sm text-gray-500 hover:text-violet-600 font-medium transition-colors">Already have an account?</Link>
+                                )}{' '}
+                                {step < 3 ? (
+                                    <button type="submit"
+                                        className="px-7 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+                                        style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>
+                                        Continue →
+                                    </button>
+                                ) : (
+                                    <button type="submit" disabled={loading}
+                                        className="px-7 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-70 flex items-center gap-2"
+                                        style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>
+                                        {loading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating...</> : 'Complete Registration ✓'}
+                                    </button>
+                                )}
+                            </div>
+                        </form>
                     </motion.div>
                 </div>
             </div>

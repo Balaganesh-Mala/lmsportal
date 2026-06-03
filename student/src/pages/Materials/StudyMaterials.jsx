@@ -16,11 +16,11 @@ const StudyMaterials = () => {
 
     // --- Subscription Tier Logic ---
     const TIER_LEVELS = {
-        'Premium': 3,
-        'Platinum': 3,
-        'Full': 3,
-        'Intermediate': 2,
-        'Gold': 2,
+        'Platinum': 4,
+        'Full': 4,
+        'Gold': 3,
+        'Intermediate': 3,
+        'Premium': 2,
         'Basic': 1
     };
 

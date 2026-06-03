@@ -73,8 +73,14 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email and password are required' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
         // Check for user
-        const student = await Student.findOne({ email });
+        const student = await Student.findOne({ email: normalizedEmail });
         if (!student) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -131,8 +137,10 @@ router.post('/register', upload.single('profilePicture'), async (req, res) => {
         
         const name = `${firstName} ${lastName}`.trim();
 
+        const normalizedEmail = email.toLowerCase().trim();
+
         // Check if student exists
-        let student = await Student.findOne({ email });
+        let student = await Student.findOne({ email: normalizedEmail });
         if (student) {
             return res.status(400).json({ success: false, message: 'Student with this email already exists' });
         }
@@ -160,18 +168,19 @@ router.post('/register', upload.single('profilePicture'), async (req, res) => {
 
         // If batch is selected, fetch batch details to get course info
         if (batchId) {
-            const batch = await Batch.findById(batchId).populate('courseId');
-            if (batch && batch.courseId) {
-                courseIdValue = batch.courseId._id;
-                courseName = batch.courseId.title;
-                courseCategory = batch.courseId.category;
+            const batch = await Batch.findById(batchId).populate('courses');
+            if (batch && batch.courses && batch.courses.length > 0) {
+                const primaryCourse = batch.courses[0];
+                courseIdValue = primaryCourse._id;
+                courseName = primaryCourse.title;
+                courseCategory = primaryCourse.category;
             }
         }
 
         // Create Student
         student = new Student({
             name,
-            email,
+            email: normalizedEmail,
             phone,
             gender,
             dob,
@@ -196,7 +205,7 @@ router.post('/register', upload.single('profilePicture'), async (req, res) => {
                 batchId,
                 courseId: courseIdValue,
                 studentId: student._id,
-                joinedAt: new Date()
+                enrollmentDate: new Date()
             });
             await batchStudent.save();
         }
@@ -352,8 +361,10 @@ router.post('/create', upload.single('profilePicture'), async (req, res) => {
             }
         }
 
+        const normalizedEmail = email.toLowerCase().trim();
+
         // Check if student exists
-        let student = await Student.findOne({ email });
+        let student = await Student.findOne({ email: normalizedEmail });
         if (student) {
             return res.status(400).json({ message: 'Student with this email already exists' });
         }
@@ -370,7 +381,7 @@ router.post('/create', upload.single('profilePicture'), async (req, res) => {
         // Create Student
         student = new Student({
             name,
-            email,
+            email: normalizedEmail,
             phone,
             gender,
             dob,

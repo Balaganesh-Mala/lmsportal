@@ -2,85 +2,49 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
     Search,
-    Filter,
     User,
     IndianRupee,
     Calendar,
-    CheckCircle,
-    AlertCircle,
-    Clock,
-    Plus,
-    Mail,
     Loader,
     Receipt,
     Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
-import AddFeeStructureModal from '../components/AddFeeStructureModal';
 import ReceiptModal from '../components/ReceiptModal';
-import EditInstallmentModal from '../components/EditInstallmentModal';
-import AddCustomInstallmentModal from '../components/AddCustomInstallmentModal';
-import MarkPaidModal from '../components/MarkPaidModal';
-import { generateReceiptPdfBase64 } from '../utils/pdfGenerator';
 
 export default function FeeManagement() {
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [installments, setInstallments] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('All'); // All, Pending, Paid, Overdue
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedReceipt, setSelectedReceipt] = useState(null);
-    const [paymentModalData, setPaymentModalData] = useState(null);
-    const [recordingPayment, setRecordingPayment] = useState(false);
-    const [editInstallmentData, setEditInstallmentData] = useState(null);
-    const [addCustomStudent, setAddCustomStudent] = useState(null);
 
     const [stats, setStats] = useState({
         totalStudents: 0,
-        upcomingCount: 0,
-        actionRequiredCount: 0
+        totalTransactions: 0,
+        totalCollected: 0
     });
 
     useEffect(() => {
         fetchInstallments();
-    }, [filter]);
+    }, []);
 
     const fetchInstallments = async () => {
         try {
             setLoading(true);
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            const statusQuery = filter !== 'All' ? `?status=${filter}` : '';
-            const res = await axios.get(`${apiUrl}/api/finance/installments${statusQuery}`);
-
+            // Only fetch paid installments
+            const res = await axios.get(`${apiUrl}/api/finance/installments?status=Paid`);
             setInstallments(res.data);
 
-            // Calculate basic stats logic on the frontend if filter is 'All'
-            if (filter === 'All') {
-                const uniqueStudents = new Set(res.data.map(i => i.student_id?._id));
+            const uniqueStudents = new Set(res.data.map(i => i.student_id?._id).filter(Boolean));
+            const totalCollected = res.data.reduce((sum, inst) => sum + (inst.amount || 0), 0);
 
-                const now = new Date();
-                const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-                let upc = 0;
-                let actReq = 0;
-
-                res.data.forEach(inst => {
-                    if (inst.status === 'Overdue') actReq++;
-                    if (inst.status === 'Pending') {
-                        const due = new Date(inst.due_date);
-                        if (due > now && due <= nextWeek) {
-                            upc++;
-                        }
-                    }
-                });
-
-                setStats({
-                    totalStudents: uniqueStudents.size,
-                    upcomingCount: upc,
-                    actionRequiredCount: actReq
-                });
-            }
+            setStats({
+                totalStudents: uniqueStudents.size,
+                totalTransactions: res.data.length,
+                totalCollected: totalCollected
+            });
 
         } catch (err) {
             console.error(err);
@@ -90,80 +54,10 @@ export default function FeeManagement() {
         }
     };
 
-    const handleMarkPaid = async (paymentData) => {
-        try {
-            setRecordingPayment(true);
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-            // 1. Fetch data for PDF Generation
-            const [settingsRes, studentInstRes] = await Promise.all([
-                axios.get(`${apiUrl}/api/settings`),
-                axios.get(`${apiUrl}/api/finance/installments?student_id=${paymentModalData.student_id._id}`)
-            ]);
-
-            const allInst = studentInstRes.data;
-            const totalFee = allInst.reduce((sum, i) => sum + i.amount, 0);
-            
-            // Calculate point-in-time total paid (up to current installment)
-            const totalPaidAtTime = allInst
-                .filter(i => (i.status === 'Paid' || i._id === paymentModalData._id) && i.installment_no <= paymentModalData.installment_no)
-                .reduce((sum, i) => sum + i.amount, 0);
-            
-            const previousPaid = totalPaidAtTime - paymentModalData.amount;
-            
-            const feeSummary = {
-                total: totalFee,
-                pending: totalFee - totalPaidAtTime,
-                previousPaid
-            };
-
-            // 2. Generate PDF Base64
-            let receipt_base64 = null;
-            try {
-                receipt_base64 = await generateReceiptPdfBase64({
-                    installment: paymentModalData,
-                    payment: paymentData,
-                    settings: settingsRes.data,
-                    feeSummary
-                });
-            } catch (pdfErr) {
-                console.error("PDF generation failed, proceeding with payment only:", pdfErr);
-            }
-
-            // 3. Record Payment & Send Email
-            const finalPayload = {
-                ...paymentData,
-                receipt_base64
-            };
-
-            await axios.post(`${apiUrl}/api/finance/installments/${paymentModalData._id}/pay`, finalPayload);
-            
-            toast.success("Payment recorded and receipt emailed!");
-            setPaymentModalData(null);
-            fetchInstallments();
-        } catch (err) {
-            console.error(err);
-            toast.error(err.response?.data?.message || 'Failed to record payment');
-        } finally {
-            setRecordingPayment(false);
-        }
-    };
-
-    const handleSendReminder = async (id) => {
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            await axios.post(`${apiUrl}/api/finance/installments/${id}/remind`);
-            toast.success("Reminder queued to send!");
-        } catch (err) {
-            console.error(err);
-            toast.error('Failed to send reminder');
-        }
-    };
-
     const handleDeleteInstallment = async (id) => {
         const result = await Swal.fire({
-            title: 'Delete Installment?',
-            text: 'Are you sure you want to permanently delete this installment? This action cannot be undone and will affect student fee records.',
+            title: 'Delete Record?',
+            text: 'Are you sure you want to permanently delete this transaction record? This action cannot be undone.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -176,11 +70,11 @@ export default function FeeManagement() {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             await axios.delete(`${apiUrl}/api/finance/installments/${id}`);
-            toast.success("Installment deleted successfully");
-            fetchInstallments(); // Refresh list
+            toast.success("Transaction record deleted successfully");
+            fetchInstallments();
         } catch (err) {
             console.error(err);
-            toast.error(err.response?.data?.message || 'Failed to delete installment');
+            toast.error(err.response?.data?.message || 'Failed to delete transaction record');
         }
     };
 
@@ -193,32 +87,6 @@ export default function FeeManagement() {
 
     const displayTotalAmount = displayData.reduce((sum, inst) => sum + (inst.amount || 0), 0);
 
-    const getStatusBadge = (inst) => {
-        const status = inst.status;
-        const mode = inst.payment_mode || '';
-        
-        switch (status) {
-            case 'Paid':
-                return (
-                    <div className="flex flex-col gap-1">
-                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
-                            <CheckCircle size={14} /> Paid
-                        </span>
-                        {mode && (
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight ml-1">
-                                via {mode}
-                            </span>
-                        )}
-                    </div>
-                );
-            case 'Overdue':
-                return <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 w-fit"><AlertCircle size={14} /> Overdue</span>;
-            case 'Pending':
-            default:
-                return <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 w-fit"><Clock size={14} /> Pending</span>;
-        }
-    };
-
     return (
         <div className="space-y-6">
 
@@ -226,17 +94,7 @@ export default function FeeManagement() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Fee Management</h1>
-                    <p className="text-sm text-gray-500 mt-1">Track student installments, send reminders, and record payments.</p>
-                </div>
-                <div className="flex gap-3">
-                    <button className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
-                        <Filter size={16} /> Filters
-                    </button>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center gap-2"
-                        onClick={() => setIsAddModalOpen(true)}
-                    >
-                        <Plus size={18} /> Add Fee Structure
-                    </button>
+                    <p className="text-sm text-gray-500 mt-1">Monitor and manage Razorpay student subscription payments.</p>
                 </div>
             </div>
 
@@ -247,26 +105,26 @@ export default function FeeManagement() {
                         <User size={24} />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Students (with fees)</p>
+                        <p className="text-sm text-gray-500 font-medium">Paid Students</p>
                         <h3 className="text-2xl font-bold text-gray-900">{stats.totalStudents}</h3>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                        <Clock size={24} />
+                    <div className="w-12 h-12 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center">
+                        <Receipt size={24} />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Upcoming (7 days)</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{stats.upcomingCount} <span className="text-sm font-normal text-gray-500">installments</span></h3>
+                        <p className="text-sm text-gray-500 font-medium">Total Transactions</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{stats.totalTransactions}</h3>
                     </div>
                 </div>
-                <div className="bg-white p-6 rounded-2xl border-red-100 bg-gradient-to-br from-white to-red-50/50 shadow-sm flex items-center gap-4 border">
-                    <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
-                        <AlertCircle size={24} />
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <IndianRupee size={24} />
                     </div>
                     <div>
-                        <p className="text-sm text-red-600/80 font-medium">Action Required</p>
-                        <h3 className="text-2xl font-bold text-red-700">{stats.actionRequiredCount} <span className="text-sm font-normal text-red-600/70">Overdue</span></h3>
+                        <p className="text-sm text-gray-500 font-medium">Total Revenue</p>
+                        <h3 className="text-2xl font-bold text-emerald-600">₹{stats.totalCollected.toLocaleString()}</h3>
                     </div>
                 </div>
             </div>
@@ -274,19 +132,9 @@ export default function FeeManagement() {
             {/* Main List Area */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {/* Toolbar */}
-                <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50">
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-                        {['All', 'Pending', 'Paid', 'Overdue'].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setFilter(tab)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === tab ? 'bg-white text-blue-600 shadow-sm border border-gray-200' : 'text-gray-600 hover:bg-gray-100'}`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="relative w-full md:w-64">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-4 bg-gray-50/50">
+                    <span className="text-sm font-semibold text-gray-700">Recent Transactions</span>
+                    <div className="relative w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input
                             type="text"
@@ -304,9 +152,9 @@ export default function FeeManagement() {
                         <thead>
                             <tr className="bg-white text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100">
                                 <th className="px-6 py-4 font-semibold">Student</th>
-                                <th className="px-6 py-4 font-semibold">Inst. Info</th>
+                                <th className="px-6 py-4 font-semibold">Payment Date</th>
                                 <th className="px-6 py-4 font-semibold">Amount</th>
-                                <th className="px-6 py-4 font-semibold">Status</th>
+                                <th className="px-6 py-4 font-semibold">Method</th>
                                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
                             </tr>
                         </thead>
@@ -331,83 +179,42 @@ export default function FeeManagement() {
                                                 )}
                                                 <div>
                                                     <p className="text-sm font-bold text-gray-900">{inst.student_id ? inst.student_id.name : 'Unknown Student'}</p>
-                                                    {/*<p className="text-xs text-gray-500">{inst.student_id?.batchTiming || 'N/A'}</p>*/}
+                                                    <p className="text-xs text-gray-500">{inst.student_id?.email || ''}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <p className="text-sm font-medium text-gray-700">Instalment #{inst.installment_no}</p>
-                                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                                                <Calendar size={12} />
-                                                <span>Due: {new Date(inst.due_date).toLocaleDateString()}</span>
+                                            <div className="flex items-center gap-1 text-sm text-gray-700 font-medium">
+                                                <Calendar size={14} className="text-gray-400" />
+                                                <span>{inst.paid_date ? new Date(inst.paid_date).toLocaleDateString() : new Date(inst.due_date).toLocaleDateString()}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-1 font-semibold text-gray-900">
-                                                <IndianRupee size={14} className="text-gray-400" />
+                                            <div className="flex items-center gap-1 font-semibold text-emerald-600">
+                                                <IndianRupee size={14} />
                                                 {inst.amount.toLocaleString()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            {getStatusBadge(inst)}
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                                {inst.payment_mode || 'Razorpay'}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                {inst.status !== 'Paid' && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => setAddCustomStudent({ studentId: inst.student_id?._id, feeId: inst.fee_structure_id })}
-                                                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors tooltip-trigger border border-transparent hover:border-emerald-100"
-                                                            title="Add Custom Installment to this Student"
-                                                        >
-                                                            <Plus size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setEditInstallmentData(inst)}
-                                                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors tooltip-trigger border border-transparent hover:border-indigo-100"
-                                                            title="Edit Installment Amount / Date"
-                                                        >
-                                                            <div className="w-4 h-4 flex items-center justify-center font-serif italic font-bold">E</div>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleSendReminder(inst._id)}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip-trigger border border-transparent hover:border-blue-100"
-                                                            title="Send Reminder"
-                                                        >
-                                                            <Mail size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteInstallment(inst._id)}
-                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors tooltip-trigger border border-transparent hover:border-red-100"
-                                                            title="Delete Installment"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setPaymentModalData(inst)}
-                                                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-colors shadow-sm flex items-center gap-1.5 ml-1"
-                                                        >
-                                                            <CheckCircle size={14} /> Mark Paid
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {inst.status === 'Paid' && (
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => setSelectedReceipt(inst)}
-                                                            className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
-                                                        >
-                                                            <Receipt size={14} /> View Receipt
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteInstallment(inst._id)}
-                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                                                            title="Delete Record"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                <button
+                                                    onClick={() => setSelectedReceipt(inst)}
+                                                    className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+                                                >
+                                                    <Receipt size={14} /> View Receipt
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteInstallment(inst._id)}
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                    title="Delete Record"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -417,7 +224,7 @@ export default function FeeManagement() {
                             {!loading && displayData.length === 0 && (
                                 <tr>
                                     <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                                        No installments found matching your criteria.
+                                        No transactions found matching your search.
                                     </td>
                                 </tr>
                             )}
@@ -442,41 +249,11 @@ export default function FeeManagement() {
 
             </div>
 
-            <AddFeeStructureModal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                onSuccess={fetchInstallments}
-            />
-
             <ReceiptModal
                 isOpen={!!selectedReceipt}
                 onClose={() => setSelectedReceipt(null)}
                 installment={selectedReceipt}
             />
-
-            <MarkPaidModal
-                isOpen={!!paymentModalData}
-                onClose={() => setPaymentModalData(null)}
-                onConfirm={handleMarkPaid}
-                installment={paymentModalData}
-                loading={recordingPayment}
-            />
-
-            <EditInstallmentModal
-                isOpen={!!editInstallmentData}
-                onClose={() => setEditInstallmentData(null)}
-                onSuccess={fetchInstallments}
-                installment={editInstallmentData}
-            />
-
-            <AddCustomInstallmentModal
-                isOpen={!!addCustomStudent}
-                onClose={() => setAddCustomStudent(null)}
-                onSuccess={fetchInstallments}
-                preselectedStudentId={addCustomStudent?.studentId}
-                feeStructureId={addCustomStudent?.feeId}
-            />
-    
 
         </div>
     );
