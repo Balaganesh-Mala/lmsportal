@@ -335,7 +335,7 @@ router.post('/create', upload.single('profilePicture'), async (req, res) => {
         const { 
             name, email, phone, gender, dob, address, city, 
             courseName, courseCategory, batchTiming, startDate, 
-            access 
+            access, planTier 
         } = req.body;
         
         let profilePictureUrl = "";
@@ -378,6 +378,8 @@ router.post('/create', upload.single('profilePicture'), async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(plainPassword, salt);
 
+        const isSubscribed = planTier && planTier !== 'None';
+
         // Create Student
         student = new Student({
             name,
@@ -394,7 +396,11 @@ router.post('/create', upload.single('profilePicture'), async (req, res) => {
             access: parsedAccess, // Object containing boolean flags
             passwordHash,
             profilePicture: profilePictureUrl,
-            status: 'Active'
+            status: 'Active',
+            planTier: planTier || 'None',
+            isSubscribed,
+            subscriptionStartedAt: isSubscribed ? new Date() : undefined,
+            subscriptionExpiresAt: isSubscribed ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : undefined
         });
 
         await student.save();
@@ -463,7 +469,7 @@ router.get('/subscribers', async (req, res) => {
                 { planTier: { $ne: 'None' } }
             ]
         })
-        .select('name email phone activePlan planTier subscriptionStartedAt subscriptionExpiresAt isSubscribed status')
+        .select('name email phone activePlan planTier subscriptionStartedAt subscriptionExpiresAt isSubscribed status couponCode')
         .populate('activePlan', 'title type duration price accessLevel')
         .sort({ subscriptionExpiresAt: -1 })
         .lean();
@@ -480,7 +486,7 @@ router.get('/subscribers', async (req, res) => {
 // @access  Admin
 router.put('/update-subscription/:id', async (req, res) => {
     try {
-        const { planId, tier, expiresAt, isSubscribed } = req.body;
+        const { planId, tier, expiresAt, isSubscribed, couponCode } = req.body;
         const student = await Student.findById(req.params.id);
         if (!student) return res.status(404).json({ message: 'Student not found' });
 
@@ -488,6 +494,7 @@ router.put('/update-subscription/:id', async (req, res) => {
         if (tier !== undefined) student.planTier = tier;
         if (expiresAt !== undefined) student.subscriptionExpiresAt = expiresAt;
         if (isSubscribed !== undefined) student.isSubscribed = isSubscribed;
+        if (couponCode !== undefined) student.couponCode = couponCode;
 
         if (isSubscribed && !student.subscriptionStartedAt) {
             student.subscriptionStartedAt = new Date();
@@ -500,6 +507,42 @@ router.put('/update-subscription/:id', async (req, res) => {
     } catch (err) {
         console.error('Error updating subscription:', err);
         res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// @route   POST /api/students/subscribers/send-reminder/:id
+// @desc    Send subscription expiry reminder email to a student
+// @access  Admin
+router.post('/subscribers/send-reminder/:id', async (req, res) => {
+    try {
+        const student = await Student.findById(req.params.id);
+        if (!student) return res.status(404).json({ message: 'Student not found' });
+        
+        let daysLeft = 'N/A';
+        if (student.subscriptionExpiresAt) {
+            const diffTime = new Date(student.subscriptionExpiresAt) - new Date();
+            daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+        
+        const subject = "Subscription Expiry Reminder - LMS Portal";
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <h2 style="color: #4f46e5; margin-bottom: 20px;">Subscription Expiry Reminder</h2>
+                <p>Dear ${student.name || 'Student'},</p>
+                <p>This is a friendly reminder that your subscription to the <strong>LMS Portal (${student.planTier || 'Basic'} Plan)</strong> is expiring ${daysLeft !== 'N/A' ? `in <strong>${daysLeft} days</strong>` : ''} (on ${student.subscriptionExpiresAt ? new Date(student.subscriptionExpiresAt).toLocaleDateString('en-GB') : 'N/A'}).</p>
+                <p>To ensure uninterrupted access to your courses, typing practice, and other premium features, please renew your subscription soon.</p>
+                <div style="margin: 30px 0; text-align: center;">
+                    <a href="${process.env.STUDENT_PORTAL_URL || 'http://localhost:5173'}/subscription" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Renew Subscription Now</a>
+                </div>
+                <p>Best regards,<br/>LMS Academy Team</p>
+            </div>
+        `;
+        
+        await sendEmail(student.email, subject, emailHtml);
+        res.json({ success: true, message: 'Expiry reminder email sent successfully!' });
+    } catch (err) {
+        console.error('Error sending reminder email:', err);
+        res.status(500).json({ message: 'Failed to send reminder email', error: err.message });
     }
 });
 
@@ -657,7 +700,7 @@ router.put('/update/:id', upload.single('profilePicture'), async (req, res) => {
         const { 
             name, phone, gender, dob, address, city, 
             courseName, courseCategory, batchTiming, startDate, 
-            access, status 
+            access, status, planTier 
         } = req.body;
 
         let profilePictureUrl = null;
@@ -704,6 +747,19 @@ router.put('/update/:id', upload.single('profilePicture'), async (req, res) => {
             student.markModified('access');
         }
         if (status) student.status = status;
+
+        if (planTier !== undefined) {
+            student.planTier = planTier;
+            const isSubscribed = planTier !== 'None';
+            student.isSubscribed = isSubscribed;
+            if (isSubscribed) {
+                if (!student.subscriptionStartedAt) student.subscriptionStartedAt = new Date();
+                student.subscriptionExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year extension/activation
+            } else {
+                student.subscriptionStartedAt = undefined;
+                student.subscriptionExpiresAt = undefined;
+            }
+        }
 
         // Password Update Logic
         if (req.body.password) {

@@ -61,6 +61,7 @@ const StudentSchema = new mongoose.Schema({
     enum: ['Basic', 'Intermediate', 'Full', 'Premium', 'Platinum', 'None'], 
     default: 'None' 
   },
+  couponCode: { type: String, default: "" },
 
   // Authentication
   passwordHash: { type: String }, // For direct portal login

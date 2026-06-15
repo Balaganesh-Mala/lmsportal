@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import {
     IndianRupee, TrendingUp, TrendingDown, Users, Wallet, AlertCircle,
     Loader, FileText, GraduationCap, MessageSquare, Layers,
@@ -120,6 +121,24 @@ function OverviewTab({ user: propUser }) {
         fetch();
     }, []);
 
+    const navigate = useNavigate();
+
+    const handleCardClick = (path, permissionKey) => {
+        if (!user) return;
+        const isAuthorized =
+            user.role === 'Administrator' ||
+            user.role === 'Super Admin' ||
+            user.role === 'Admin' ||
+            !permissionKey ||
+            (user.access && !!user.access[permissionKey]);
+
+        if (isAuthorized) {
+            navigate(path);
+        } else {
+            toast.error("Access denied. You do not have permission to view that page.");
+        }
+    };
+
     if (loading) return <Spinner />;
     if (!stats) return <EmptyState message="Could not load overview" />;
 
@@ -145,11 +164,11 @@ function OverviewTab({ user: propUser }) {
     };
 
     const kpis = [
-        { title: 'Total Students', value: stats.totalStudents, icon: GraduationCap, iconColor: 'text-indigo-600', iconBg: 'bg-indigo-50', sub: 'All enrolled', key: 'students' },
-        { title: 'Active Batches', value: stats.activeBatches, icon: Layers, iconColor: 'text-violet-600', iconBg: 'bg-violet-50', sub: `${stats.upcomingBatches} upcoming`, key: 'students' },
-        { title: 'New Inquiries', value: stats.newInquiries, icon: MessageSquare, iconColor: 'text-rose-600', iconBg: 'bg-rose-50', sub: 'Awaiting response', trend: 'New', trendPositive: false, key: 'inquiries' },
-        { title: 'Fees This Month', value: `₹${stats.feesThisMonth.toLocaleString()}`, icon: IndianRupee, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50', trend: 'Collected', trendPositive: true, key: 'finance' },
-        { title: 'Upcoming Meetings', value: stats.upcomingMeetings, icon: CalendarCheck, iconColor: 'text-sky-600', iconBg: 'bg-sky-50', sub: 'Scheduled ahead', key: 'meetings' },
+        { title: 'Total Students', value: stats.totalStudents, icon: GraduationCap, iconColor: 'text-indigo-600', iconBg: 'bg-indigo-50', sub: 'All enrolled', key: 'students', path: '/students', permissionKey: 'studentsList' },
+        { title: 'Active Batches', value: stats.activeBatches, icon: Layers, iconColor: 'text-violet-600', iconBg: 'bg-violet-50', sub: `${stats.upcomingBatches} upcoming`, key: 'students', path: '/batches', permissionKey: 'batchStudents' },
+        { title: 'New Inquiries', value: stats.newInquiries, icon: MessageSquare, iconColor: 'text-rose-600', iconBg: 'bg-rose-50', sub: 'Awaiting response', trend: 'New', trendPositive: false, key: 'inquiries', path: '/inquiries', permissionKey: 'inquiries' },
+        { title: 'Fees This Month', value: `₹${stats.feesThisMonth.toLocaleString()}`, icon: IndianRupee, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50', trend: 'Collected', trendPositive: true, key: 'finance', path: '/fees', permissionKey: 'feeManagement' },
+        { title: 'Upcoming Meetings', value: stats.upcomingMeetings, icon: CalendarCheck, iconColor: 'text-sky-600', iconBg: 'bg-sky-50', sub: 'Scheduled ahead', key: 'meetings', path: '/meetings', permissionKey: '' },
     ];
 
     const allowedKpis = kpis.filter(k => hasPermission(k.key));
@@ -158,7 +177,15 @@ function OverviewTab({ user: propUser }) {
         <div className="space-y-8">
             {/* KPI Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {allowedKpis.map((k, i) => <StatCard key={i} {...k} />)}
+                {allowedKpis.map((k, i) => (
+                    <div
+                        key={i}
+                        onClick={() => handleCardClick(k.path, k.permissionKey)}
+                        className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        <StatCard {...k} />
+                    </div>
+                ))}
             </div>
 
             {/* Recent Activity */}
@@ -424,11 +451,9 @@ function StudentsTab() {
     return (
         <div className="space-y-6">
             {/* KPI row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 max-w-2xl gap-4">
                 <StatCard title="Total Students" value={data.total} icon={Users} iconColor="text-indigo-600" iconBg="bg-indigo-50" sub="All enrolled" />
                 <StatCard title="Active Students" value={data.active} icon={UserCheck} iconColor="text-emerald-600" iconBg="bg-emerald-50" sub="Has portal access" />
-                <StatCard title="Present Today" value={data.presentToday} icon={CheckCircle2} iconColor="text-sky-600" iconBg="bg-sky-50" sub="Marked attendance" />
-                <StatCard title="Absent Today" value={data.absentToday} icon={AlertCircle} iconColor="text-rose-600" iconBg="bg-rose-50" sub="No attendance yet" />
             </div>
 
             {/* Charts */}
@@ -680,7 +705,7 @@ export default function Dashboard() {
         const fetchMe = async () => {
             try {
                 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const res = await axiosInstance.get(`${API_URL}/api/admin/me`);
+                const res = await axios.get(`${API_URL}/api/admin/me`);
                 if (res.data && res.data.success && res.data.user) {
                     const freshUser = res.data.user;
                     setCurrentUser(freshUser);

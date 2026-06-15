@@ -117,8 +117,8 @@ const StudyMaterialsManagement = () => {
         e.preventDefault();
 
         if (!formData.title) return toast.error("Title is required");
-        if (!editMode && formData.contentType === 'document' && !formData.file && !formData.linkUrl) {
-            return toast.error("Please upload a file or provide a Drive link");
+        if (formData.contentType === 'document' && !formData.linkUrl) {
+            return toast.error("Please provide a document preview link");
         }
 
         setSubmitting(true);
@@ -502,24 +502,14 @@ const StudyMaterialsManagement = () => {
                                     </div>
 
                                     {formData.contentType === 'document' && (
-                                        <div className="space-y-4">
-                                            <div className="relative group p-6 border-2 border-dashed border-slate-100 rounded-xl hover:border-orange-200 hover:bg-orange-50/30 transition-all text-center cursor-pointer">
-                                                <input type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx,.jpg,.png" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                                <Upload size={20} className="mx-auto text-slate-300 mb-2 group-hover:text-orange-600 transition-colors" />
-                                                <p className="text-xs font-bold text-slate-700">{formData.file ? formData.file.name : (editMode ? 'Upload new file (optional)' : 'Click to Upload Document')}</p>
-                                            </div>
-                                            <div className="relative text-center">
-                                                <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-100"></div>
-                                                <span className="relative bg-white px-3 text-[9px] font-bold text-slate-300 uppercase tracking-widest">OR PRIVATE LINK</span>
-                                            </div>
-                                            <input
-                                                type="url"
-                                                value={formData.linkUrl}
-                                                onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
-                                                placeholder="Paste private preview link..."
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 outline-none transition-all"
-                                            />
-                                        </div>
+                                        <input
+                                            type="url"
+                                            value={formData.linkUrl}
+                                            onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
+                                            placeholder="Paste document preview link (Google Drive, Dropbox, etc.)..."
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 outline-none transition-all"
+                                            required
+                                        />
                                     )}
                                     {formData.contentType === 'video' && (
                                         <input

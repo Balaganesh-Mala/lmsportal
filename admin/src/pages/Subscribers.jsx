@@ -15,8 +15,13 @@ import {
     ArrowUpRight as ArrowUpRightIcon,
     UserCircle as UserCircleIcon,
     CheckCircle2 as CheckCircle2Icon,
-    XCircle as XCircleIcon
+    XCircle as XCircleIcon,
+    Mail as MailIcon,
+    Download as DownloadIcon,
+    Loader2 as LoaderIcon
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Subscribers = () => {
     const [subscribers, setSubscribers] = useState([]);
@@ -24,12 +29,15 @@ const Subscribers = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterTier, setFilterTier] = useState('All');
+    const [filterCoupon, setFilterCoupon] = useState('All');
     const [editingSub, setEditingSub] = useState(null);
+    const [sendingReminderId, setSendingReminderId] = useState(null);
     const [editForm, setEditForm] = useState({
         planId: '',
         tier: '',
         expiresAt: '',
-        isSubscribed: true
+        isSubscribed: true,
+        couponCode: ''
     });
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -65,7 +73,8 @@ const Subscribers = () => {
             planId: sub.activePlan?._id || '',
             tier: sub.planTier || 'Basic',
             expiresAt: sub.subscriptionExpiresAt ? new Date(sub.subscriptionExpiresAt).toISOString().split('T')[0] : '',
-            isSubscribed: sub.isSubscribed
+            isSubscribed: sub.isSubscribed,
+            couponCode: sub.couponCode || ''
         });
     };
 
@@ -80,13 +89,126 @@ const Subscribers = () => {
         }
     };
 
+    const isCloseToExpiry = (expiryDate, isSubscribed) => {
+        if (!expiryDate || !isSubscribed) return false;
+        const diffTime = new Date(expiryDate) - new Date();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 && diffDays <= 7;
+    };
+
+    const handleSendReminder = async (subId) => {
+        try {
+            setSendingReminderId(subId);
+            const { data } = await axios.post(`${API_URL}/api/students/subscribers/send-reminder/${subId}`);
+            if (data.success) {
+                toast.success("Reminder email sent successfully!");
+            } else {
+                toast.error(data.message || "Failed to send reminder");
+            }
+        } catch (error) {
+            console.error("Error sending reminder:", error);
+            toast.error(error.response?.data?.message || "Error sending reminder email");
+        } finally {
+            setSendingReminderId(null);
+        }
+    };
+
+    const handleExportCSV = () => {
+        const headers = ['Student Name', 'Email', 'Active Plan', 'Tier', 'Status', 'Expiry Date', 'Coupon Code'];
+        const rows = filteredSubscribers.map(sub => {
+            const isExpired = sub.subscriptionExpiresAt && new Date(sub.subscriptionExpiresAt) < new Date();
+            const status = isExpired ? 'Expired' : (sub.isSubscribed ? 'Active' : 'Inactive');
+            const expiryDate = sub.subscriptionExpiresAt 
+                ? new Date(sub.subscriptionExpiresAt).toLocaleDateString('en-GB') 
+                : 'N/A';
+            return [
+                sub.name || '',
+                sub.email || '',
+                sub.activePlan?.title || 'Custom Access',
+                sub.planTier || 'None',
+                status,
+                expiryDate,
+                sub.couponCode || ''
+            ];
+        });
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Subscribers_Export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Excel/CSV export completed!");
+    };
+
+    const handleExportPDF = () => {
+        try {
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Subscriber Base Report', 14, 15);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN')}`, 14, 20);
+
+            const headers = [['Student Name', 'Email', 'Active Plan', 'Tier', 'Status', 'Expiry Date', 'Coupon Used']];
+            const body = filteredSubscribers.map(sub => {
+                const isExpired = sub.subscriptionExpiresAt && new Date(sub.subscriptionExpiresAt) < new Date();
+                const status = isExpired ? 'Expired' : (sub.isSubscribed ? 'Active' : 'Inactive');
+                const expiryDate = sub.subscriptionExpiresAt 
+                    ? new Date(sub.subscriptionExpiresAt).toLocaleDateString('en-GB') 
+                    : 'N/A';
+                return [
+                    sub.name || '',
+                    sub.email || '',
+                    sub.activePlan?.title || 'Custom Access',
+                    sub.planTier || 'None',
+                    status,
+                    expiryDate,
+                    sub.couponCode || 'None'
+                ];
+            });
+
+            autoTable(doc, {
+                startY: 25,
+                head: headers,
+                body: body,
+                theme: 'striped',
+                styles: { fontSize: 9, cellPadding: 3 },
+                headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+            });
+
+            doc.save(`Subscribers_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.success("PDF export completed!");
+        } catch (error) {
+            console.error('PDF Export Error:', error);
+            toast.error("Failed to export PDF");
+        }
+    };
+
+    const uniqueCoupons = [...new Set(subscribers.map(sub => sub.couponCode).filter(Boolean))].sort();
+
     const filteredSubscribers = subscribers.filter(sub => {
         const name = sub.name || '';
         const email = sub.email || '';
         const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                              email.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesTier = filterTier === 'All' || sub.planTier === filterTier;
-        return matchesSearch && matchesTier;
+        const matchesCoupon = filterCoupon === 'All' || (filterCoupon === 'None' ? !sub.couponCode : sub.couponCode === filterCoupon);
+        return matchesSearch && matchesTier && matchesCoupon;
     });
 
     const getTierColor = (tier) => {
@@ -111,8 +233,8 @@ const Subscribers = () => {
                     <p className="text-slate-500 font-medium">Manage active learning plans and access control</p>
                 </div>
                 
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64 min-w-[200px]">
                         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input 
                             type="text" 
@@ -132,6 +254,31 @@ const Subscribers = () => {
                         <option value="Intermediate">Gold (Intermediate)</option>
                         <option value="Basic">Premium (Basic)</option>
                     </select>
+                    <select 
+                        value={filterCoupon}
+                        onChange={(e) => setFilterCoupon(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 focus:outline-none"
+                    >
+                        <option value="All">All Coupons</option>
+                        <option value="None">No Coupon</option>
+                        {uniqueCoupons.map(code => (
+                            <option key={code} value={code}>{code}</option>
+                        ))}
+                    </select>
+                    <button 
+                        onClick={handleExportCSV}
+                        className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm"
+                        title="Export CSV (Excel)"
+                    >
+                        <DownloadIcon size={16} /> Excel
+                    </button>
+                    <button 
+                        onClick={handleExportPDF}
+                        className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-150"
+                        title="Export PDF"
+                    >
+                        <DownloadIcon size={16} /> PDF
+                    </button>
                 </div>
             </div>
 
@@ -144,6 +291,7 @@ const Subscribers = () => {
                                 <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Student</th>
                                 <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Active Plan</th>
                                 <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Tier</th>
+                                <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Coupon Used</th>
                                 <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Status</th>
                                 <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Expiry</th>
                                 <th className="px-6 py-4 text-right"></th>
@@ -152,11 +300,16 @@ const Subscribers = () => {
                         <tbody className="divide-y divide-slate-100">
                             {filteredSubscribers.map((sub) => {
                                 const isExpired = sub.subscriptionExpiresAt && new Date(sub.subscriptionExpiresAt) < new Date();
+                                const isExpiringSoon = isCloseToExpiry(sub.subscriptionExpiresAt, sub.isSubscribed);
+                                const rowBgClass = isExpiringSoon 
+                                    ? "bg-rose-50/50 hover:bg-rose-50 border-l-4 border-l-rose-500 transition-colors" 
+                                    : "hover:bg-slate-50/50 transition-colors";
+                                
                                 return (
-                                    <tr key={sub._id} className="hover:bg-slate-50/50 transition-colors">
+                                    <tr key={sub._id} className={rowBgClass}>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-bold">
+                                                <div className="w-10 h-10 bg-indigo-55 hover:bg-indigo-100 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-bold">
                                                     {(sub.name || 'S').charAt(0)}
                                                 </div>
                                                 <div>
@@ -180,6 +333,15 @@ const Subscribers = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-5">
+                                            {sub.couponCode ? (
+                                                <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 border-dashed rounded-lg text-xs font-black tracking-wider">
+                                                    {sub.couponCode}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-400 font-bold text-xs">—</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-5">
                                             {isExpired ? (
                                                 <div className="flex items-center gap-1.5 text-rose-500 font-bold text-[11px] uppercase">
                                                     <XCircleIcon size={14} /> Expired
@@ -196,18 +358,38 @@ const Subscribers = () => {
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                                                <CalendarIcon size={14} className="text-slate-300" />
+                                                <CalendarIcon size={14} className={isExpiringSoon ? 'text-rose-500' : 'text-slate-300'} />
                                                 {sub.subscriptionExpiresAt ? new Date(sub.subscriptionExpiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                                             </div>
-                                            {isExpired && <p className="text-[10px] text-rose-400 font-bold ml-6 italic">Access Blocked</p>}
+                                            {isExpired ? (
+                                                <p className="text-[10px] text-rose-400 font-bold ml-6 italic">Access Blocked</p>
+                                            ) : isExpiringSoon ? (
+                                                <p className="text-[10px] text-rose-500 font-black ml-6 animate-pulse">Expires Soon!</p>
+                                            ) : null}
                                         </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <button 
-                                                onClick={() => handleEdit(sub)}
-                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                                            >
-                                                <EditIcon size={18} />
-                                            </button>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center justify-end gap-2">
+                                                {isExpiringSoon && (
+                                                    <button
+                                                        onClick={() => handleSendReminder(sub._id)}
+                                                        disabled={sendingReminderId === sub._id}
+                                                        title="Send Expiry Reminder Email"
+                                                        className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-100/50 rounded-xl transition-all disabled:opacity-50"
+                                                    >
+                                                        {sendingReminderId === sub._id ? (
+                                                            <LoaderIcon className="animate-spin" size={18} />
+                                                        ) : (
+                                                            <MailIcon size={18} />
+                                                        )}
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => handleEdit(sub)}
+                                                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                >
+                                                    <EditIcon size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -263,14 +445,26 @@ const Subscribers = () => {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Expiry Date</label>
-                                <input 
-                                    type="date"
-                                    value={editForm.expiresAt}
-                                    onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Expiry Date</label>
+                                    <input 
+                                        type="date"
+                                        value={editForm.expiresAt}
+                                        onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Coupon Used</label>
+                                    <input 
+                                        type="text"
+                                        value={editForm.couponCode}
+                                        placeholder="No Coupon"
+                                        onChange={(e) => setEditForm({ ...editForm, couponCode: e.target.value.toUpperCase() })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">

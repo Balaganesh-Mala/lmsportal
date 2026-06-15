@@ -8,6 +8,9 @@ import Swal from 'sweetalert2';
 const Courses = () => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState([]);
+    const [classes, setClasses] = useState([]);
+    const [selectedClassId, setSelectedClassId] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
@@ -30,7 +33,8 @@ const Courses = () => {
         isBonus: false,
         pricingType: 'free',
         priceCoins: 0,
-        pricePoints: 0
+        pricePoints: 0,
+        assignedClasses: []
     };
 
     const [formData, setFormData] = useState(initialFormState);
@@ -39,25 +43,28 @@ const Courses = () => {
     const [currentTopic, setCurrentTopic] = useState('');
 
     useEffect(() => {
-        fetchCourses();
+        fetchData();
     }, []);
 
-    const fetchCourses = async () => {
+    const fetchData = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/courses`);
-            setCourses(res.data);
+            setLoading(true);
+            const coursesRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/courses`);
+            const classesRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/batches`);
+            setCourses(coursesRes.data);
+            setClasses(classesRes.data.batches || []);
             setLoading(false);
         } catch (err) {
-            console.error('Error fetching courses:', err);
-            toast.error('Failed to load courses');
+            console.error('Error fetching data:', err);
+            toast.error('Failed to load courses & classes');
             setLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
         const result = await Swal.fire({
-            title: 'Delete Course?',
-            text: 'Are you sure you want to delete this course? This will remove all associated files and modules. This action cannot be undone.',
+            title: 'Delete Subject?',
+            text: 'Are you sure you want to delete this subject? This will remove all associated files and modules. This action cannot be undone.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -70,16 +77,25 @@ const Courses = () => {
         try {
             await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/courses/${id}`);
             setCourses(courses.filter(course => course._id !== id));
-            toast.success('Course deleted successfully');
+            
+            // Refresh classes to update counts
+            const classesRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/batches`);
+            setClasses(classesRes.data.batches || []);
+            
+            toast.success('Subject deleted successfully');
         } catch (err) {
             console.error('Error deleting course:', err);
-            toast.error('Failed to delete course');
+            toast.error('Failed to delete subject');
         }
     };
 
     const handleOpenModal = (course = null) => {
         if (course) {
             setEditingCourse(course);
+            const currentAssigned = classes
+                .filter(cls => (cls.courses || []).some(c => (c._id || c) === course._id))
+                .map(cls => cls._id);
+
             setFormData({
                 ...initialFormState,
                 title: course.title,
@@ -95,11 +111,15 @@ const Courses = () => {
                 syllabus: course.syllabus || [],
                 pricingType: course.pricingType || 'free',
                 priceCoins: course.priceCoins || 0,
-                pricePoints: course.pricePoints || 0
+                pricePoints: course.pricePoints || 0,
+                assignedClasses: currentAssigned
             });
         } else {
             setEditingCourse(null);
-            setFormData(initialFormState);
+            setFormData({
+                ...initialFormState,
+                assignedClasses: (selectedClassId !== 'all' && selectedClassId !== 'unassigned') ? [selectedClassId] : []
+            });
         }
         setIsModalOpen(true);
     };
@@ -116,7 +136,25 @@ const Courses = () => {
     };
 
     const handleFileChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.files[0] });
+        const file = e.target.files[0];
+        if (file) {
+            if (e.target.name === 'image') {
+                const maxImageSize = 2 * 1024 * 1024; // 2MB
+                if (file.size > maxImageSize) {
+                    toast.error("Image file is too large. Maximum size allowed is 2MB.");
+                    e.target.value = "";
+                    return;
+                }
+            } else if (e.target.name === 'syllabusPdf' || e.target.name === 'brochurePdf') {
+                const maxPdfSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxPdfSize) {
+                    toast.error("PDF file is too large. Maximum size allowed is 5MB.");
+                    e.target.value = "";
+                    return;
+                }
+            }
+            setFormData({ ...formData, [e.target.name]: file });
+        }
     };
 
     // Highlights Helpers
@@ -151,7 +189,7 @@ const Courses = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const toastId = toast.loading('Saving course...');
+        const toastId = toast.loading('Saving subject...');
 
         try {
             const data = new FormData();
@@ -180,108 +218,251 @@ const Courses = () => {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 setCourses(courses.map(c => c._id === editingCourse._id ? res.data : c));
-                toast.success('Course updated successfully', { id: toastId });
             } else {
                 res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/courses`, data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 setCourses([res.data, ...courses]);
-                toast.success('Course created successfully', { id: toastId });
             }
+
+            const courseId = res.data._id;
+            // Update batches (classes)
+            await Promise.all(classes.map(async (cls) => {
+                const isChecked = formData.assignedClasses.includes(cls._id);
+                const hasCourse = (cls.courses || []).some(c => (c._id || c) === courseId);
+
+                if (isChecked && !hasCourse) {
+                    const updatedCourses = [...(cls.courses || []).map(c => c._id || c), courseId];
+                    await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/batches/${cls._id}`, {
+                        name: cls.name,
+                        startDate: cls.startDate,
+                        endDate: cls.endDate,
+                        maxStudents: cls.maxStudents,
+                        description: cls.description,
+                        status: cls.status,
+                        courses: updatedCourses
+                    });
+                } else if (!isChecked && hasCourse) {
+                    const updatedCourses = (cls.courses || []).map(c => c._id || c).filter(id => id !== courseId);
+                    await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/batches/${cls._id}`, {
+                        name: cls.name,
+                        startDate: cls.startDate,
+                        endDate: cls.endDate,
+                        maxStudents: cls.maxStudents,
+                        description: cls.description,
+                        status: cls.status,
+                        courses: updatedCourses
+                    });
+                }
+            }));
+
+            // Sync batches/classes list after changes
+            const classesRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/batches`);
+            setClasses(classesRes.data.batches || []);
+
+            toast.success(editingCourse ? 'Subject updated successfully' : 'Subject created successfully', { id: toastId });
             handleCloseModal();
         } catch (err) {
             console.error('Error saving course:', err);
-            toast.error('Failed to save course', { id: toastId });
+            toast.error('Failed to save subject', { id: toastId });
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-gray-500">Loading courses...</div>;
+    if (loading) return <div className="p-8 text-center text-gray-500">Loading courses & classes...</div>;
+
+    // Filtered courses based on selected class level and search query
+    const filteredCourses = courses.filter((course) => {
+        // Filter by class
+        if (selectedClassId !== 'all') {
+            if (selectedClassId === 'unassigned') {
+                const assignedCourseIds = new Set(classes.flatMap(cls => (cls.courses || []).map(c => c._id || c)));
+                if (assignedCourseIds.has(course._id)) return false;
+            } else {
+                const selectedClass = classes.find(cls => cls._id === selectedClassId);
+                const classCourseIds = new Set((selectedClass?.courses || []).map(c => c._id || c));
+                if (!classCourseIds.has(course._id)) return false;
+            }
+        }
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            return (
+                course.title?.toLowerCase().includes(query) ||
+                course.description?.toLowerCase().includes(query)
+            );
+        }
+        return true;
+    });
+
+    const getSelectedClassName = () => {
+        if (selectedClassId === 'all') return 'All Subjects';
+        if (selectedClassId === 'unassigned') return 'Unassigned Subjects';
+        const cls = classes.find(c => c._id === selectedClassId);
+        return cls ? `${cls.name} Subjects` : 'Subjects';
+    };
 
     return (
         <div className="space-y-6 p-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            {/* Top Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 pb-5">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Courses Management</h1>
-                    <p className="text-gray-500 text-sm mt-1">Add, edit, and manage your course catalog.</p>
+                    <h1 className="text-2xl font-bold text-gray-800">Course & Subjects Management</h1>
+                    <p className="text-gray-500 text-sm mt-1">Manage classes and their corresponding subjects.</p>
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
                     className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium hover:bg-indigo-700 transition-colors shadow-sm"
                 >
-                    <Plus size={20} /> Add New Course
+                    <Plus size={20} /> Add New Subject
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {courses.length === 0 ? (
-                    <div className="col-span-full text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                        <p className="text-gray-500">No courses found. Click "Add New Course" to get started.</p>
+            {/* Sidebar + Subjects Grid Layout */}
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* Left Classes Sidebar */}
+                <div className="w-full lg:w-64 shrink-0 space-y-4">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                            <h2 className="font-bold text-gray-700 text-sm flex items-center gap-2">
+                                <Layers size={16} className="text-indigo-500" />
+                                Classes
+                            </h2>
+                            <button
+                                onClick={() => navigate('/batches')}
+                                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline"
+                            >
+                                Manage
+                            </button>
+                        </div>
+                        <div className="p-2 space-y-1">
+                            <button
+                                onClick={() => setSelectedClassId('all')}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all text-left ${selectedClassId === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                            >
+                                <span className="truncate">All Subjects</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${selectedClassId === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{courses.length}</span>
+                            </button>
+
+                            {classes.map((cls) => {
+                                const subjectCount = (cls.courses || []).length;
+                                return (
+                                    <button
+                                        key={cls._id}
+                                        onClick={() => setSelectedClassId(cls._id)}
+                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all text-left ${selectedClassId === cls._id ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                                    >
+                                        <span className="truncate">{cls.name}</span>
+                                        <span className={`text-xs px-2 py-0.5 rounded-full ${selectedClassId === cls._id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{subjectCount}</span>
+                                    </button>
+                                );
+                            })}
+
+                            <button
+                                onClick={() => setSelectedClassId('unassigned')}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all text-left ${selectedClassId === 'unassigned' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                            >
+                                <span className="truncate">Unassigned Subjects</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${selectedClassId === 'unassigned' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{courses.filter(c => !classes.some(cls => (cls.courses || []).some(cc => (cc._id || cc) === c._id))).length}</span>
+                            </button>
+                        </div>
                     </div>
-                ) : (
-                    courses.map((course) => (
-                        <div key={course._id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
-                            <div className="relative h-48 bg-gray-100">
-                                <img
-                                    src={course.imageUrl || 'https://via.placeholder.com/400x200?text=No+Image'}
-                                    alt={course.title}
-                                    className="w-full h-full object-cover"
+                </div>
+
+                {/* Right Subjects Grid */}
+                <div className="flex-grow w-full space-y-4">
+                    {/* Search and Filters inside selected view */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <h2 className="font-bold text-gray-800 text-lg">{getSelectedClassName()}</h2>
+                        <div className="flex flex-col sm:flex-row gap-3 flex-grow md:max-w-md items-center">
+                            <div className="relative w-full">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="Search subjects..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-indigo-500 transition-colors text-sm"
                                 />
-                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 p-1 rounded-lg shadow-sm backdrop-blur-sm">
-                                    <button
-                                        onClick={() => navigate(`/courses/${course._id}/modules`)}
-                                        className="p-1.5 text-gray-600 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
-                                        title="Manage Content"
-                                    >
-                                        <Layers size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleOpenModal(course)}
-                                        className="p-1.5 text-gray-600 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
-                                        title="Edit"
-                                    >
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(course._id)}
-                                        className="p-1.5 text-gray-600 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                                <div className="absolute bottom-2 left-2 flex gap-2">
-                                    <span className="bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                                        {course.skillLevel}
-                                    </span>
-                                    {course.isBonus && (
-                                        <span className="bg-purple-600/80 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                                            Bonus Course
-                                        </span>
-                                    )}
-                                </div>
                             </div>
-
-                            <div className="p-5 flex flex-col flex-grow">
-                                <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1" title={course.title}>
-                                    {course.title}
-                                </h3>
-                                <p className="text-gray-500 text-sm line-clamp-2 mb-4 flex-grow" title={course.description}>
-                                    {course.description}
-                                </p>
-
-                                <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t border-gray-100 mt-auto">
-                                    <div className="flex items-center gap-1">
-                                        <Clock size={16} className="text-gray-400" />
-                                        {course.duration}
-                                    </div>
-                                    <div className="font-semibold text-indigo-600">
-                                        {course.fee}
-                                    </div>
-                                </div>
+                            <div className="text-xs text-gray-400 whitespace-nowrap">
+                                Showing <strong>{filteredCourses.length}</strong> of {courses.length}
                             </div>
                         </div>
-                    ))
-                )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {filteredCourses.length === 0 ? (
+                            <div className="col-span-full text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+                                <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
+                                <p className="text-gray-500 font-medium">No subjects found in this view.</p>
+                            </div>
+                        ) : (
+                            filteredCourses.map((course) => (
+                                <div key={course._id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
+                                    <div className="relative h-48 bg-gray-100">
+                                        <img
+                                            src={course.imageUrl || 'https://via.placeholder.com/400x200?text=No+Image'}
+                                            alt={course.title}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 p-1 rounded-lg shadow-sm backdrop-blur-sm">
+                                            <button
+                                                onClick={() => navigate(`/courses/${course._id}/modules`)}
+                                                className="p-1.5 text-gray-600 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                                                title="Manage Content"
+                                            >
+                                                <Layers size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleOpenModal(course)}
+                                                className="p-1.5 text-gray-600 hover:text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(course._id)}
+                                                className="p-1.5 text-gray-600 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                        <div className="absolute bottom-2 left-2 flex gap-2">
+                                            <span className="bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                                                {course.skillLevel}
+                                            </span>
+                                            {course.isBonus && (
+                                                <span className="bg-purple-600/80 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                                                    Bonus
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-5 flex flex-col flex-grow">
+                                        <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1" title={course.title}>
+                                            {course.title}
+                                        </h3>
+                                        <p className="text-gray-500 text-sm line-clamp-2 mb-4 flex-grow" title={course.description}>
+                                            {course.description}
+                                        </p>
+
+                                        <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t border-gray-100 mt-auto">
+                                            <div className="flex items-center gap-1">
+                                                <Clock size={16} className="text-gray-400" />
+                                                {course.duration}
+                                            </div>
+                                            <div className="font-semibold text-indigo-600">
+                                                ₹{course.fee}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Modal */}
@@ -290,7 +471,7 @@ const Courses = () => {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
                             <h2 className="text-xl font-bold text-gray-800">
-                                {editingCourse ? 'Edit Course' : 'Create New Course'}
+                                {editingCourse ? 'Edit Subject' : 'Create New Subject'}
                             </h2>
                             <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
                                 <X size={24} />
@@ -298,15 +479,14 @@ const Courses = () => {
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-
                             {/* Basic Details */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Course Title</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject Title *</label>
                                     <input
                                         type="text" name="title" value={formData.title} onChange={handleChange} required
                                         className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
-                                        placeholder="e.g. Full Stack Web Development"
+                                        placeholder="e.g. Mathematics"
                                     />
                                 </div>
                                 <div className="md:col-span-2">
@@ -322,7 +502,7 @@ const Courses = () => {
                                     <textarea
                                         name="overview" value={formData.overview} onChange={handleChange} required rows="5"
                                         className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
-                                        placeholder="Detailed course overview, prerequisites, and goals..."
+                                        placeholder="Detailed subject overview, prerequisites, and learning goals..."
                                     />
                                 </div>
                                 <div>
@@ -333,7 +513,7 @@ const Courses = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Fee (INR)</label>
                                     <input type="text" name="fee" value={formData.fee} onChange={handleChange} required
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="e.g. 45000" />
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="e.g. 4500" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Skill Level</label>
@@ -417,8 +597,42 @@ const Courses = () => {
                                 </div>
                             </div>
 
+                            {/* Class Assignment Section */}
+                            <div className="border-t border-gray-150 pt-6">
+                                <label className="block text-sm font-bold text-gray-800 mb-2">Assign to Classes</label>
+                                <p className="text-xs text-gray-500 mb-3">Select which class(es) this subject belongs to.</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                    {classes.map((cls) => {
+                                        const isChecked = formData.assignedClasses.includes(cls._id);
+                                        return (
+                                            <label
+                                                key={cls._id}
+                                                className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-all ${
+                                                    isChecked
+                                                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
+                                                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        const updated = e.target.checked
+                                                            ? [...formData.assignedClasses, cls._id]
+                                                            : formData.assignedClasses.filter(id => id !== cls._id);
+                                                        setFormData({ ...formData, assignedClasses: updated });
+                                                    }}
+                                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                                                />
+                                                <span className="text-sm truncate">{cls.name}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
                             {/* Highlights Builder */}
-                            <div className="border-t border-gray-100 pt-6">
+                            <div className="border-t border-gray-150 pt-6">
                                 <label className="block text-sm font-bold text-gray-800 mb-2">Key Highlights</label>
                                 <div className="flex gap-2 mb-3">
                                     <input
@@ -446,7 +660,7 @@ const Courses = () => {
                             </div>
 
                             {/* Syllabus Builder */}
-                            <div className="border-t border-gray-100 pt-6">
+                            <div className="border-t border-gray-150 pt-6">
                                 <label className="block text-sm font-bold text-gray-800 mb-2">Syllabus Modules</label>
 
                                 <div className="bg-gray-50 p-4 rounded-xl space-y-3 mb-4 border border-gray-200">
@@ -502,7 +716,7 @@ const Courses = () => {
                                     Cancel
                                 </button>
                                 <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg font-medium transition-colors shadow-lg shadow-indigo-200">
-                                    {editingCourse ? 'Save Changes' : 'Create Course'}
+                                    {editingCourse ? 'Save Changes' : 'Create Subject'}
                                 </button>
                             </div>
                         </form>

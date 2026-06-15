@@ -230,7 +230,11 @@ router.post('/verify-subscription', async (req, res) => {
             // 3. Track Coupon Usage
             if (req.body.couponId) {
                 const Coupon = require('../models/Coupon');
-                await Coupon.findByIdAndUpdate(req.body.couponId, { $inc: { usedCount: 1 } });
+                const coupon = await Coupon.findByIdAndUpdate(req.body.couponId, { $inc: { usedCount: 1 } });
+                if (coupon) {
+                    student.couponCode = coupon.code;
+                    await student.save();
+                }
             }
 
             res.status(200).json({ 

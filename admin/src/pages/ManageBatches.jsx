@@ -37,7 +37,7 @@ const ManageBatches = () => {
             setBatches(res.data.batches);
         } catch (err) {
             console.error(err);
-            toast.error('Failed to load batches');
+            toast.error('Failed to load classes');
         } finally {
             setLoading(false);
         }
@@ -83,16 +83,16 @@ const ManageBatches = () => {
                     form
                 );
                 setBatches(prev => prev.map(b => b._id === editingBatch._id ? { ...res.data.batch, studentCount: editingBatch.studentCount } : b));
-                toast.success('Batch updated');
+                toast.success('Class updated');
             } else {
                 const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/batches`, form);
                 setBatches(prev => [{ ...res.data.batch, studentCount: 0 }, ...prev]);
-                toast.success('Batch created');
+                toast.success('Class created');
             }
             setIsModalOpen(false);
         } catch (err) {
             console.error(err);
-            toast.error(err.response?.data?.message || 'Failed to save batch');
+            toast.error(err.response?.data?.message || 'Failed to save class');
         } finally {
             setSaving(false);
         }
@@ -100,8 +100,8 @@ const ManageBatches = () => {
 
     const handleDelete = async (batchId) => {
         const result = await Swal.fire({
-            title: 'Delete Batch?',
-            text: 'Are you sure you want to delete this batch? All student assignments will be removed. This action cannot be undone.',
+            title: 'Delete Class?',
+            text: 'Are you sure you want to delete this class? All student assignments will be removed. This action cannot be undone.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#4f46e5',
@@ -114,9 +114,9 @@ const ManageBatches = () => {
         try {
             await axios.delete(`${import.meta.env.VITE_API_URL}/api/batches/${batchId}`);
             setBatches(prev => prev.filter(b => b._id !== batchId));
-            toast.success('Batch deleted');
+            toast.success('Class deleted');
         } catch (err) {
-            toast.error('Failed to delete batch');
+            toast.error('Failed to delete class');
         }
     };
 
@@ -132,21 +132,21 @@ const ManageBatches = () => {
         return 'bg-gray-100 text-gray-600';
     };
 
-    if (loading) return <div className="p-8 text-center text-gray-500">Loading batches...</div>;
+    if (loading) return <div className="p-8 text-center text-gray-500">Loading classes...</div>;
 
     return (
         <div className="p-6 max-w-6xl mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between items-start gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Manage Batches</h1>
-                    <p className="text-gray-500 mt-1">Create and manage student batches per course</p>
+                    <h1 className="text-2xl font-bold text-gray-800">Manage Classes</h1>
+                    <p className="text-gray-500 mt-1">Create and manage student classes and subjects</p>
                 </div>
                 <button
                     onClick={openCreate}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium w-full sm:w-auto justify-center"
                 >
-                    <Plus size={18} /> New Batch
+                    <Plus size={18} /> New Class
                 </button>
             </div>
 
@@ -168,10 +168,10 @@ const ManageBatches = () => {
             {batches.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
                     <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500 font-medium">No batches yet</p>
-                    <p className="text-gray-400 text-sm mt-1">Create your first batch to get started</p>
+                    <p className="text-gray-500 font-medium">No classes yet</p>
+                    <p className="text-gray-400 text-sm mt-1">Create your first class to get started</p>
                     <button onClick={openCreate} className="mt-4 px-5 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
-                        Create Batch
+                        Create Class
                     </button>
                 </div>
             ) : (
@@ -242,7 +242,7 @@ const ManageBatches = () => {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
                             <h2 className="text-xl font-bold text-gray-800">
-                                {editingBatch ? 'Edit Batch' : 'Create New Batch'}
+                                {editingBatch ? 'Edit Class' : 'Create New Class'}
                             </h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                                 <X size={24} />
@@ -251,12 +251,12 @@ const ManageBatches = () => {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Batch Name *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>
                                 <input
                                     type="text"
                                     value={form.name}
                                     onChange={e => setForm({ ...form, name: e.target.value })}
-                                    placeholder="e.g. Batch A – Jan 2026"
+                                    placeholder="e.g. 4th Class"
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 outline-none"
                                     required
                                 />
@@ -339,7 +339,7 @@ const ManageBatches = () => {
                                     value={form.description}
                                     onChange={e => setForm({ ...form, description: e.target.value })}
                                     rows="3"
-                                    placeholder="Add any notes about this batch..."
+                                    placeholder="Add any notes about this class..."
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-indigo-500 outline-none"
                                 />
                             </div>
@@ -363,7 +363,7 @@ const ManageBatches = () => {
                                     ) : (
                                         <Save size={16} />
                                     )}
-                                    {editingBatch ? 'Save Changes' : 'Create Batch'}
+                                    {editingBatch ? 'Save Changes' : 'Create Class'}
                                 </button>
                             </div>
                         </form>

@@ -144,10 +144,24 @@ export default function CouponManagement() {
                                             </span>
                                         </div>
                                         <div className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-400 font-bold">Usage</span>
+                                            <span className="text-slate-400 font-bold">Usage Limit</span>
                                             <span className="text-slate-900 font-black">
-                                                {coupon.usedCount} / {coupon.usageLimit || '∞'}
+                                                {coupon.usageLimit || '∞'}
                                             </span>
+                                        </div>
+                                        <div className="flex flex-col gap-1 text-sm border-t border-slate-100 pt-3 mt-2">
+                                            <span className="text-slate-400 font-bold">Students Used ({coupon.students?.length || 0})</span>
+                                            {coupon.students && coupon.students.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1 mt-1 max-h-24 overflow-y-auto pr-1">
+                                                    {coupon.students.map((st, i) => (
+                                                        <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] rounded-md font-bold" title={st.email}>
+                                                            {st.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 italic">None yet</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

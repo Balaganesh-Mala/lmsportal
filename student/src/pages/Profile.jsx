@@ -57,6 +57,12 @@ const Profile = () => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+                toast.error("Image file is too large. Maximum size allowed is 2MB.");
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
             setSelectedFile(file);
             const reader = new FileReader();
             reader.onloadend = () => setProfilePreview(reader.result);

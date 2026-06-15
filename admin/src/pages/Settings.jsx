@@ -57,7 +57,16 @@ const Settings = () => {
     };
 
     const handleFileChange = (e) => {
-        setFormData(prev => ({ ...prev, file: e.target.files[0] }));
+        const file = e.target.files[0];
+        if (file) {
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+                toast.error("Logo file is too large. Maximum size allowed is 2MB.");
+                e.target.value = "";
+                return;
+            }
+            setFormData(prev => ({ ...prev, file: file }));
+        }
     };
 
     const handleSubmit = async (e) => {

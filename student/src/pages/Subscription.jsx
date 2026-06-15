@@ -43,7 +43,7 @@ const Subscription = () => {
         const fetchSettings = async () => {
             try {
                 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const { data } = await axios.get(`${API_URL}/api/settings/company`);
+                const { data } = await axios.get(`${API_URL}/api/settings`);
                 setSettings(data);
             } catch (error) {
                 console.error("Failed to fetch settings:", error);
@@ -67,7 +67,30 @@ const Subscription = () => {
     useEffect(() => {
         if (!user) {
             navigate('/login');
+            return;
         }
+
+        const fetchLatestUser = async () => {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const { data } = await axios.get(`${API_URL}/api/students/${user._id}`);
+                if (data) {
+                    const updatedUser = {
+                        ...user,
+                        ...data
+                    };
+                    localStorage.setItem('studentUser', JSON.stringify(updatedUser));
+                    
+                    const trialActive = updatedUser.trialEndsAt && new Date() < new Date(updatedUser.trialEndsAt);
+                    if (updatedUser.isSubscribed || trialActive) {
+                        navigate('/dashboard');
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to sync user subscription status:", error);
+            }
+        };
+        fetchLatestUser();
     }, [user, navigate]);
 
     const toggleFeatures = (planId) => {

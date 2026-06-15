@@ -24,17 +24,14 @@ const AddStudent = () => {
         courseCategory: '',
         batchTiming: 'Morning',
         startDate: new Date().toISOString().split('T')[0],
+        planTier: 'None',
         access: {
             dashboard: true,
             myCourses: true,
-            myQR: true,
-            attendance: true,
             typingPractice: true,
-            aiMockInterview: true,
-            profile: true,
+            payments: true,
             settings: true,
-            jobs: true,
-            payments: true
+            profile: true
         },
         profilePicture: ''
     });
@@ -53,11 +50,21 @@ const AddStudent = () => {
                     const formattedDate = student.startDate ? new Date(student.startDate).toISOString().split('T')[0] : '';
                     const formattedDob = student.dob ? new Date(student.dob).toISOString().split('T')[0] : '';
 
+                    const filteredAccess = {
+                        dashboard: student.access?.dashboard !== false,
+                        myCourses: student.access?.myCourses !== false,
+                        typingPractice: student.access?.typingPractice !== false,
+                        payments: student.access?.payments !== false,
+                        settings: student.access?.settings !== false,
+                        profile: student.access?.profile !== false
+                    };
+
                     setFormData({
                         ...student,
                         startDate: formattedDate,
                         dob: formattedDob,
-                        access: { ...formData.access, ...(student.access || {}) },
+                        planTier: student.planTier || 'None',
+                        access: filteredAccess,
                         profilePicture: student.profilePicture || ''
                     });
                 } catch (err) {
@@ -242,7 +249,18 @@ const AddStudent = () => {
                                     <input 
                                         type="file" 
                                         accept="image/*"
-                                        onChange={e => setProfileFile(e.target.files[0])} 
+                                        onChange={e => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const maxSize = 2 * 1024 * 1024; // 2MB
+                                                if (file.size > maxSize) {
+                                                    toast.error("Image file is too large. Maximum size allowed is 2MB.");
+                                                    e.target.value = "";
+                                                    return;
+                                                }
+                                                setProfileFile(file);
+                                            }
+                                        }} 
                                         className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" 
                                     />
                                 </div>
@@ -287,6 +305,17 @@ const AddStudent = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                             <input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white" />
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Subscription Type</label>
+                            <select value={formData.planTier || 'None'} onChange={e => setFormData({ ...formData, planTier: e.target.value })} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                                <option value="None">None</option>
+                                <option value="Basic">Basic</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Full">Full</option>
+                                <option value="Premium">Premium</option>
+                                <option value="Platinum">Platinum</option>
+                            </select>
+                        </div>
                     </div>
                 </section>
 
@@ -296,7 +325,7 @@ const AddStudent = () => {
                 <section>
                     <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs">3</span>
-                        Feature Access
+                        Future Access
                     </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {Object.keys(formData.access).map(key => (

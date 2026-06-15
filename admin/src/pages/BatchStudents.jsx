@@ -11,66 +11,6 @@ import Swal from 'sweetalert2';
 const fmt = (n) =>
     new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n || 0);
 
-// Fee Summary Cell
-const FeeSummaryCell = ({ feeSummary }) => {
-    if (!feeSummary) {
-        return (
-            <span className="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-50 border border-dashed border-gray-200 px-2.5 py-1 rounded-full">
-                No fee set
-            </span>
-        );
-    }
-
-    const { totalFee, paidAmount, pendingAmount, paidInstallments, totalInstallments, overdueInstallments } = feeSummary;
-    const paidPct = totalFee > 0 ? Math.min(100, (paidAmount / totalFee) * 100) : 0;
-    const isFullyPaid = paidInstallments >= totalInstallments && pendingAmount <= 0;
-    const hasOverdue = overdueInstallments > 0;
-
-    return (
-        <div className="flex flex-col gap-1.5 min-w-[180px]">
-            {/* Amounts Row */}
-            <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 size={11} />
-                    ₹{fmt(paidAmount)}
-                </span>
-                {pendingAmount > 0 && (
-                    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${hasOverdue ? 'text-red-700 bg-red-50' : 'text-amber-700 bg-amber-50'}`}>
-                        {hasOverdue ? <AlertCircle size={11} /> : <Clock size={11} />}
-                        ₹{fmt(pendingAmount)}
-                    </span>
-                )}
-                {isFullyPaid && (
-                    <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        Fully Paid ✓
-                    </span>
-                )}
-            </div>
-
-            {/* Progress Bar */}
-            <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                        className={`h-full rounded-full transition-all ${isFullyPaid ? 'bg-emerald-500' : hasOverdue ? 'bg-red-400' : 'bg-indigo-400'}`}
-                        style={{ width: `${paidPct}%` }}
-                    />
-                </div>
-                <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
-                    {paidInstallments}/{totalInstallments} inst.
-                </span>
-            </div>
-
-            {/* Total Fee */}
-            <p className="text-[10px] text-gray-400">
-                Total: ₹{fmt(totalFee)}
-                {hasOverdue && (
-                    <span className="ml-1.5 text-red-500 font-medium">{overdueInstallments} overdue</span>
-                )}
-            </p>
-        </div>
-    );
-};
-
 const BatchStudents = () => {
     const { batchId } = useParams();
     const navigate = useNavigate();
@@ -88,8 +28,7 @@ const BatchStudents = () => {
     const [selectedStudentIds, setSelectedStudentIds] = useState([]);
     const [selectedMoveStudents, setSelectedMoveStudents] = useState([]);
     const [saving, setSaving] = useState(false);
-    const [studentSearch, setStudentSearch] = useState('');
-    const [feeStatusFilter, setFeeStatusFilter] = useState('All'); 
+    const [studentSearch, setStudentSearch] = useState(''); 
 
 
     // Bonus Course Logic
@@ -343,13 +282,7 @@ const BatchStudents = () => {
             s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
             s.email.toLowerCase().includes(studentSearch.toLowerCase());
 
-        const matchesFeeStatus =
-            feeStatusFilter === 'All' ||
-            (feeStatusFilter === 'Paid' && e.feeSummary?.paidInstallments >= e.feeSummary?.totalInstallments) ||
-            (feeStatusFilter === 'Pending' && e.feeSummary?.pendingAmount > 0 && e.feeSummary?.overdueInstallments === 0) ||
-            (feeStatusFilter === 'Overdue' && e.feeSummary?.overdueInstallments > 0);
-
-        return matchesSearch && matchesFeeStatus;
+        return matchesSearch;
     });
 
     // Fee totals for batch summary
@@ -402,7 +335,7 @@ const BatchStudents = () => {
 
             {/* Fee Summary Cards */}
             {enrollments.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 max-w-xl gap-4 mb-6">
                     <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
                             <IndianRupee size={18} className="text-indigo-600" />
@@ -419,15 +352,6 @@ const BatchStudents = () => {
                         <div>
                             <p className="text-xs text-gray-500">Collected</p>
                             <p className="text-base font-bold text-emerald-700">₹{fmt(feeStats.totalPaid)}</p>
-                        </div>
-                    </div>
-                    <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
-                            <Clock size={18} className="text-amber-600" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500">Pending</p>
-                            <p className="text-base font-bold text-amber-700">₹{fmt(feeStats.totalPending)}</p>
                         </div>
                     </div>
                 </div>
@@ -455,22 +379,6 @@ const BatchStudents = () => {
                             <RefreshCw size={14} /> Move Selected ({selectedMoveStudents.length})
                         </button>
                     )}
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">Fee Status:</span>
-                    <div className="flex bg-gray-100 p-1 rounded-lg shrink-0">
-                        {['All', 'Paid', 'Pending', 'Overdue'].map((status) => (
-                            <button
-                                key={status}
-                                onClick={() => setFeeStatusFilter(status)}
-                                className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-                                    feeStatusFilter === status
-                                        ? 'bg-white text-indigo-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                            >
-                                {status}
-                            </button>
-                        ))}
-                    </div>
                 </div>
                 
                 <div className="text-xs text-gray-500 ml-auto">
@@ -507,15 +415,14 @@ const BatchStudents = () => {
                                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
                                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Enrollment Date</th>
                                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fees</th>
                                 <th className="px-6 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filteredEnrollments.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-12 text-center text-gray-400 text-sm italic">
-                                        No students match the current filters.
+                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400 text-sm italic">
+                                        No students match the search criteria.
                                     </td>
                                 </tr>
                             ) : (
@@ -568,9 +475,6 @@ const BatchStudents = () => {
                                             >
                                                 {s.status}
                                             </button>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <FeeSummaryCell feeSummary={enrollment.feeSummary} />
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-1 justify-end">

@@ -60,8 +60,18 @@ router.get('/validate', async (req, res) => {
 // @route   GET /api/coupons
 router.get('/', async (req, res) => {
     try {
-        const coupons = await Coupon.find().sort({ createdAt: -1 });
-        res.json(coupons);
+        const coupons = await Coupon.find().sort({ createdAt: -1 }).lean();
+        const Student = require('../models/Student');
+        
+        const couponsWithStudents = await Promise.all(coupons.map(async (coupon) => {
+            const students = await Student.find({ couponCode: coupon.code }).select('name email');
+            return {
+                ...coupon,
+                students
+            };
+        }));
+        
+        res.json(couponsWithStudents);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

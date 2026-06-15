@@ -14,7 +14,7 @@ const Students = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
-    const [feeFilter, setFeeFilter] = useState('All');
+    const [subscriptionFilter, setSubscriptionFilter] = useState('All');
     const [courseFilter, setCourseFilter] = useState('All');
     const [batchFilter, setBatchFilter] = useState('All');
     const [allBatches, setAllBatches] = useState([]);
@@ -108,14 +108,10 @@ const Students = () => {
         const matchStatus = statusFilter === 'All' || 
             (s.status && s.status.trim().toLowerCase() === statusFilter.trim().toLowerCase());
         
-        const feeStatus = getFeeStatus(s);
-        const matchFee =
-            feeFilter === 'All' ||
-            (feeFilter === 'Overdue' && feeStatus === 'overdue') ||
-            (feeFilter === 'Pending' && feeStatus === 'pending') ||
-            (feeFilter === 'Fully Paid' && feeStatus === 'clear' && s.feeDetails?.pendingAmount === 0) ||
-            (feeFilter === 'Partially Paid' && feeStatus === 'pending' && s.feeDetails?.paidAmount > 0) ||
-            (feeFilter === 'No Data' && feeStatus === 'none');
+        const matchSubscription =
+            subscriptionFilter === 'All' ||
+            (s.planTier && s.planTier.toLowerCase() === subscriptionFilter.toLowerCase()) ||
+            (subscriptionFilter === 'None' && (!s.planTier || s.planTier === 'None'));
 
         const matchCourse = courseFilter === 'All' || 
             (s.courseName && s.courseName.trim().toLowerCase() === courseFilter.trim().toLowerCase());
@@ -125,7 +121,7 @@ const Students = () => {
             (s.batchName && s.batchName.trim().toLowerCase() === batchFilter.trim().toLowerCase()) || 
             (s.batchTiming && s.batchTiming.trim().toLowerCase() === batchFilter.trim().toLowerCase());
 
-        return matchSearch && matchStatus && matchFee && matchCourse && matchBatch;
+        return matchSearch && matchStatus && matchSubscription && matchCourse && matchBatch;
     });
 
     const uniqueCourses = [...new Set(students.map(s => s.courseName).filter(Boolean))].sort();
@@ -136,17 +132,17 @@ const Students = () => {
     const uniqueBatches = [...new Set([...officialBatchNames, ...studentBatchInfo])].sort();
 
     const activeCount = students.filter(s => s.status === 'Active').length;
-    const overdueCount = students.filter(s => getFeeStatus(s) === 'overdue').length;
+    const subscribedCount = students.filter(s => s.isSubscribed).length;
 
     const clearFilters = () => {
         setSearchTerm('');
         setStatusFilter('All');
-        setFeeFilter('All');
+        setSubscriptionFilter('All');
         setCourseFilter('All');
         setBatchFilter('All');
     };
 
-    const hasActiveFilters = searchTerm || statusFilter !== 'All' || feeFilter !== 'All' || courseFilter !== 'All' || batchFilter !== 'All';
+    const hasActiveFilters = searchTerm || statusFilter !== 'All' || subscriptionFilter !== 'All' || courseFilter !== 'All' || batchFilter !== 'All';
 
     return (
         <div className="p-4 md:p-6 space-y-5">
@@ -155,7 +151,7 @@ const Students = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Student Management</h1>
                     <p className="text-gray-500 text-sm mt-0.5">
-                        {students.length} students &middot; {activeCount} active &middot; {overdueCount} overdue fees
+                        {students.length} students &middot; {activeCount} active &middot; {subscribedCount} subscribed
                     </p>
                 </div>
                 <button
@@ -193,7 +189,7 @@ const Students = () => {
                         Filters
                         {hasActiveFilters && (
                             <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">
-                                {[statusFilter !== 'All', feeFilter !== 'All', !!searchTerm, courseFilter !== 'All', batchFilter !== 'All'].filter(Boolean).length}
+                                {[statusFilter !== 'All', subscriptionFilter !== 'All', !!searchTerm, courseFilter !== 'All', batchFilter !== 'All'].filter(Boolean).length}
                             </span>
                         )}
                     </button>
@@ -233,22 +229,16 @@ const Students = () => {
 
                         <div className="w-px h-5 bg-gray-200 hidden sm:block" />
 
-                        {/* Fee Status Filter */}
+                        {/* Subscription Filter */}
                         <div className="flex items-center gap-2">
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Fees</label>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Subscription</label>
                             <div className="flex gap-1 flex-wrap">
-                                {['All', 'Overdue', 'Pending', 'Partially Paid', 'Fully Paid', 'No Data'].map((opt) => (
+                                {['All', 'Basic', 'Intermediate', 'Full', 'Premium', 'Platinum', 'None'].map((opt) => (
                                     <button
                                         key={opt}
-                                        onClick={() => setFeeFilter(opt)}
-                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${feeFilter === opt
-                                                ? opt === 'Overdue'
-                                                    ? 'bg-red-600 text-white'
-                                                    : opt === 'Pending' || opt === 'Partially Paid'
-                                                        ? 'bg-amber-500 text-white'
-                                                        : opt === 'Fully Paid'
-                                                            ? 'bg-emerald-600 text-white'
-                                                            : 'bg-indigo-600 text-white'
+                                        onClick={() => setSubscriptionFilter(opt)}
+                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${subscriptionFilter === opt
+                                                ? 'bg-indigo-600 text-white'
                                                 : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
@@ -302,7 +292,7 @@ const Students = () => {
                             <tr className="bg-gray-50 border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500">
                                 <th className="px-4 py-3 font-semibold">Student</th>
                                 <th className="px-4 py-3 font-semibold">Course & Batch</th>
-                                <th className="px-4 py-3 font-semibold">Fees Breakdown</th>
+                                <th className="px-4 py-3 font-semibold">Subscription</th>
                                 <th className="px-4 py-3 font-semibold">Status</th>
                                 <th className="px-4 py-3 font-semibold text-right">Actions</th>
                             </tr>
@@ -336,7 +326,6 @@ const Students = () => {
                                 </tr>
                             ) : (
                                 filteredStudents.map((student) => {
-                                    const feeStatus = getFeeStatus(student);
                                     return (
                                         <tr
                                             key={student._id}
@@ -378,39 +367,21 @@ const Students = () => {
                                                 )}
                                             </td>
 
-                                            {/* Fees Breakdown */}
+                                            {/* Subscription */}
                                             <td className="px-4 py-3.5">
-                                                {student.feeDetails ? (
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center gap-3 text-xs">
-                                                            <span className="flex items-center gap-1 text-emerald-700 font-semibold">
-                                                                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                                                                ₹{student.feeDetails.paidAmount.toLocaleString('en-IN')} paid
-                                                            </span>
-                                                            <span className="text-gray-300">|</span>
-                                                            <span className="flex items-center gap-1 text-amber-700 font-semibold">
-                                                                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                                                                ₹{student.feeDetails.pendingAmount.toLocaleString('en-IN')} pending
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                            <span className="bg-gray-100 px-2 py-0.5 rounded font-medium text-gray-700">
-                                                                {student.feeDetails.paidInstallments}/{student.feeDetails.totalInstallments} installments
-                                                            </span>
-                                                            <span className="text-gray-700 font-semibold">
-                                                                Total: ₹{student.feeDetails.totalFee.toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                        {student.feeDetails.overdueInstallments > 0 && (
-                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                                                                {student.feeDetails.overdueInstallments} Overdue
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-gray-400 italic">No fee data</span>
-                                                )}
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                                                    student.planTier === 'Premium' || student.planTier === 'Platinum'
+                                                        ? 'bg-purple-100 text-purple-800'
+                                                        : student.planTier === 'Full'
+                                                            ? 'bg-emerald-100 text-emerald-800'
+                                                            : student.planTier === 'Intermediate'
+                                                                ? 'bg-blue-100 text-blue-800'
+                                                                : student.planTier === 'Basic'
+                                                                    ? 'bg-indigo-100 text-indigo-800'
+                                                                    : 'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {student.planTier || 'None'}
+                                                </span>
                                             </td>
 
                                             {/* Status Toggle */}

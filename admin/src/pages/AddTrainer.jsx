@@ -237,7 +237,18 @@ const AddTrainer = () => {
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        onChange={e => setProfileFile(e.target.files[0])}
+                                        onChange={e => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const maxSize = 2 * 1024 * 1024; // 2MB
+                                                if (file.size > maxSize) {
+                                                    toast.error("Image file is too large. Maximum size allowed is 2MB.");
+                                                    e.target.value = "";
+                                                    return;
+                                                }
+                                                setProfileFile(file);
+                                            }
+                                        }}
                                         className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                                     />
                                 </div>

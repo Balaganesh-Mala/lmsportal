@@ -54,7 +54,7 @@ const navCategories = [
     icon: Users,
     links: [
       { name: 'Students', path: '/students', icon: Users },
-      { name: 'Batches', path: '/batches', icon: Layers },
+      { name: 'Classes', path: '/batches', icon: Layers },
       { name: 'MCQ Tests', path: '/tests', icon: FileText }
     ]
   },
@@ -62,7 +62,7 @@ const navCategories = [
     title: 'Courses & Learning',
     icon: BookOpen,
     links: [
-      { name: 'Courses', path: '/courses', icon: BookOpen },
+      { name: 'Courses & Subjects', path: '/courses', icon: BookOpen },
       { name: 'Trainers', path: '/trainers', icon: Users },
       { name: 'Study Materials', path: '/materials', icon: FileText }
     ]
@@ -147,9 +147,9 @@ const Layout = () => {
     if (user.role === 'Administrator' || user.role === 'Super Admin' || user.role === 'Admin') return true;
 
     const linkKeyMap = {
-      'Student List': 'studentsList',
-      'Batch Students': 'batchStudents',
-      'Courses': 'courses',
+      'Students': 'studentsList',
+      'Classes': 'batchStudents',
+      'Courses & Subjects': 'courses',
       'Trainers': 'trainers',
       'Study Materials': 'studyMaterials',
       'Fee Management': 'feeManagement',

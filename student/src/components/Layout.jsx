@@ -523,7 +523,7 @@ const Layout = () => {
                 </nav>
 
                 {/* Sidebar Footer - Dedicated Profile Tab Card */}
-                {user && (
+                {user && user.access?.profile !== false && (
                     <div className="p-4 border-t border-slate-800/80 bg-slate-900/40 mt-auto shrink-0">
                         <NavLink
                             to="/profile"
@@ -603,8 +603,8 @@ const Layout = () => {
                             { icon: (p) => <AiOutlineDashboard {...p} />, label: 'Home', path: '/dashboard', exact: false },
                             { icon: (p) => <AiOutlineBook {...p} />, label: 'Learn', path: '/courses' },
                             { icon: (p) => <AiOutlineTrophy {...p} />, label: 'Ranks', path: '/leaderboard' },
-                            { icon: (p) => <AiOutlineUser {...p} />, label: 'Profile', path: '/profile' }
-                        ].map((tab) => {
+                            user?.access?.profile !== false && { icon: (p) => <AiOutlineUser {...p} />, label: 'Profile', path: '/profile' }
+                        ].filter(Boolean).map((tab) => {
                             const isActive = tab.exact ? location.pathname === tab.path : location.pathname.startsWith(tab.path);
                             return (
                                 <button
