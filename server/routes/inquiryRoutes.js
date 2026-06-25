@@ -38,14 +38,14 @@ router.post('/', async (req, res) => {
                     const templateSettings = settings || {};
 
                     if (source === 'brochure_download') {
-                        subject = `Your Course Brochure: ${course.title} - Finwise`;
+                        subject = `Your Course Brochure: ${course.title} - Smart Aspirants`;
                         htmlContent = brochureDownloadTemplate(name, course.title, course.brochurePdf?.url || '', templateSettings);
                     } else if (source === 'syllabus_download') {
-                        subject = `Your Course Syllabus: ${course.title} - Finwise`;
+                        subject = `Your Course Syllabus: ${course.title} - Smart Aspirants`;
                         htmlContent = syllabusDownloadTemplate(name, course.title, course.syllabusPdf?.url || '', templateSettings);
                     } else if (source === 'quote_popup') {
                         // Quote popup is for "Get Fee & Curriculum"
-                        subject = `Fee & Curriculum Details: ${course.title} - Finwise`;
+                        subject = `Fee & Curriculum Details: ${course.title} - Smart Aspirants`;
                         htmlContent = feeAndCurriculumTemplate(name, course.title, course.fee, course.syllabusPdf?.url || course.brochurePdf?.url || '', templateSettings);
                     }
 

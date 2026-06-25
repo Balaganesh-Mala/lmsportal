@@ -117,7 +117,7 @@ const Login = () => {
                             />
                         ) : (
                             <div className="h-16 w-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-xl transform rotate-3">
-                                {settings.siteTitle ? settings.siteTitle.charAt(0) : 'J'}
+                                {settings.siteTitle ? settings.siteTitle.charAt(0) : 'S'}
                             </div>
                         )}
                     </div>

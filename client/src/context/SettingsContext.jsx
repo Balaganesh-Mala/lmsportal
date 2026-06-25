@@ -7,13 +7,13 @@ export const useSettings = () => useContext(SettingsContext);
 
 export const SettingsProvider = ({ children }) => {
     const defaultSettings = {
-        siteTitle: 'Finwise Career Solutions',
+        siteTitle: 'Smart Aspirants',
         logoUrl: '',
         contact: {
             phone: '',
             whatsapp: '',
-            email: 'info@finwise.com',
-            address: 'Finwise Location'
+            email: 'info@smartaspirants.com',
+            address: 'Smart Aspirants Location'
         },
         socials: {
             facebook: '#',

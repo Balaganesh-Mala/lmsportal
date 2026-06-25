@@ -38,15 +38,15 @@ app.use(cors({
         'http://localhost:5000',
         'http://187.127.138.157:5000/',
         'https://lmsportal-1.onrender.com',
-        'https://finwise-student.vercel.app', // Student Portal Deployed
-        'https://learning.finwisecareers.com', // Student Portal Production
-        'http://finwisecareers.com',
-        'https://finwisecareers.com',
+        'https://student.smartaspirants.com', // Student Portal Deployed
+        'https://learning.smartaspirants.com', // Student Portal Production
+        'http://smartaspirants.com',
+        'https://smartaspirants.com',
         process.env.CLIENT_URL,
         process.env.ADMIN_URL,
         process.env.STUDENT_URL,
-        'https://trainer.finwisecareers.com',
-        'https://finwise-3tlb.vercel.app',
+        'https://trainer.smartaspirants.com',
+        'https://smartaspirants-student.vercel.app',
         'https://vapi.ai',
         'https://*.vapi.ai'
     ],

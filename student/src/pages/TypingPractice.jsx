@@ -441,7 +441,7 @@ const TypingPractice = () => {
                 }
 
                 // Dispatch global sync event for real-time Navbar update
-                window.dispatchEvent(new CustomEvent('finwise-activity-sync'));
+                window.dispatchEvent(new CustomEvent('smart-aspirants-activity-sync'));
 
                 toast.success('Progress Saved!', { id: 'save-success' });
                 fetchHistory(u._id);

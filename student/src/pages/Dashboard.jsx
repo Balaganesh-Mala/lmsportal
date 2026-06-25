@@ -132,10 +132,10 @@ const Dashboard = () => {
         const handleSync = () => {
             fetchDashboardData();
         };
-        window.addEventListener('finwise-activity-sync', handleSync);
+        window.addEventListener('smart-aspirants-activity-sync', handleSync);
 
         return () => {
-            window.removeEventListener('finwise-activity-sync', handleSync);
+            window.removeEventListener('smart-aspirants-activity-sync', handleSync);
         };
     }, [fetchDashboardData]);
 

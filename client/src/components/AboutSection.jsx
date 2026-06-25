@@ -49,7 +49,7 @@ const AboutSection = () => {
                         >
                             <div className="flex items-center gap-4 mb-6">
                                 <span className="h-0.5 w-12 bg-indigo-600 rounded-full"></span>
-                                <span className="text-indigo-600 font-bold uppercase tracking-widest text-sm">About Finwise</span>
+                                <span className="text-indigo-600 font-bold uppercase tracking-widest text-sm">About Smart Aspirants</span>
                             </div>
 
                             <h2 className="text-4xl lg:text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
@@ -61,7 +61,7 @@ const AboutSection = () => {
                             </h2>
 
                             <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                                <strong>Finwise Career Solutions</strong> is a premier training hub dedicated to transforming graduates into industry-ready <strong>Finance & Accounting</strong> professionals. We bridge the gap between academic education and corporate excellence through specialized training in <strong>Corporate Accounting, Investment Banking Operations, Fund Accounting, KYC/AML</strong>.
+                                <strong>Smart Aspirants</strong> is a premier training hub dedicated to transforming graduates into industry-ready <strong>Finance & Accounting</strong> professionals. We bridge the gap between academic education and corporate excellence through specialized training in <strong>Corporate Accounting, Investment Banking Operations, Fund Accounting, KYC/AML</strong>.
                             </p>
 
                             <div className="space-y-6 mb-10">
@@ -98,7 +98,7 @@ const AboutSection = () => {
                                 </Link>
                                 <div className="flex gap-4">
                                     <a
-                                        href="https://www.linkedin.com/company/finwise-career-solutions/?originalSubdomain=in"
+                                        href="https://www.linkedin.com/company/smart-aspirants"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="p-3 bg-white rounded-full text-blue-700 hover:bg-blue-50 hover:scale-110 transition-all shadow-sm border border-gray-100"
@@ -106,7 +106,7 @@ const AboutSection = () => {
                                         <Linkedin size={20} />
                                     </a>
                                     <a
-                                        href="https://www.instagram.com/finwisecareersolutions/"
+                                        href="https://www.instagram.com/smartaspirants/"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="p-3 bg-white rounded-full text-pink-600 hover:bg-pink-50 hover:scale-110 transition-all shadow-sm border border-gray-100"
@@ -132,7 +132,7 @@ const AboutSection = () => {
                             >
                                 <img
                                     src={images.img1}
-                                    alt="Finwise Training"
+                                    alt="Smart Aspirants Training"
                                     className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>

@@ -7,7 +7,7 @@ const LocationSection = () => {
     const { getContactInfo } = useSettings();
 
     const address = getContactInfo('address') || '123 Tech Park Avenue, Main IT Corridor, Silicon Valley, CA 94025';
-    const email = getContactInfo('email') || 'hello@jobreadyskills.com';
+    const email = getContactInfo('email') || 'hello@smartaspirants.com';
     const phone = getContactInfo('phone') || '+1 (555) 123-4567';
 
     return (
@@ -115,7 +115,7 @@ const LocationSection = () => {
                             allowFullScreen=""
                             loading="lazy"
                             referrerPolicy="no-referrer-when-downgrade"
-                            title="JobReady Campus Location"
+                            title="Smart Aspirants Campus Location"
                             className="transition-all duration-700 ease-in-out"
                         ></iframe>
 

@@ -10,8 +10,8 @@ const BlogSection = () => {
     const [settings, setSettings] = useState(null);
 
     const getAuthorName = (author) => {
-        const companyTitle = settings?.siteTitle || 'Finwise';
-        const systemAuthors = ['Admin', 'JobReady Team', 'JobReady', 'Finwise Team'];
+        const companyTitle = settings?.siteTitle || 'Smart Aspirants';
+        const systemAuthors = ['Admin', 'Smart Aspirants Team', 'Smart Aspirants', 'Smart Aspirants Team'];
         if (!author || systemAuthors.includes(author)) {
             return companyTitle;
         }

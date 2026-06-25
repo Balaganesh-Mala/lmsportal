@@ -29,7 +29,7 @@ const TopicSchema = new mongoose.Schema({
     publicId: String,
     name: String,
     type: { type: String, enum: ['file', 'google_doc', 'google_ppt'], default: 'file' },
-    requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum'], default: 'Basic' }
+    requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum', 'Free Trial'], default: 'Basic' }
   }],
   order: {
     type: Number,
@@ -45,7 +45,7 @@ const TopicSchema = new mongoose.Schema({
   },
   requiredTier: { 
     type: String, 
-    enum: ['Basic', 'Intermediate', 'Full'], 
+    enum: ['Basic', 'Intermediate', 'Full', 'Free Trial'], 
     default: 'Basic' 
   },
   createdAt: {

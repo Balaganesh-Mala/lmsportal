@@ -93,8 +93,8 @@ router.post('/setup', async (req, res) => {
         const { name, email, password } = req.body;
 
         const admin = await Admin.create({
-            name: name || 'Finwise Admin',
-            email: email || 'admin@finwisecareers.com',
+            name: name || 'Smart Aspirants Admin',
+            email: email || 'admin@smartaspirants.com',
             password: password || 'Admin@123'
         });
 

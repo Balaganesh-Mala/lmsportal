@@ -69,7 +69,7 @@ const sendReminders = async (interview, student, timeFrame, settings) => {
                 <p style="margin: 5px 0;"><strong>Link:</strong> <a href="${interview.meetingLink}" style="color: #4f46e5; font-weight: bold;">Join Meeting Now</a></p>
             </div>
             <p>Please ensure you are in a quiet place with a stable internet connection.</p>
-            <p style="font-size: 12px; color: #64748b; margin-top: 30px;">Sent by Finwise Career Solutions Automated Scheduler.</p>
+            <p style="font-size: 12px; color: #64748b; margin-top: 30px;">Sent by Smart Aspirants Automated Scheduler.</p>
         </div>
     `;
 

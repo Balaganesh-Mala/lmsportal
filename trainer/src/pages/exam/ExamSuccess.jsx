@@ -124,7 +124,7 @@ const ExamSuccess = () => {
                 <div className="text-center text-sm text-gray-400 flex flex-col items-center justify-center gap-2">
                     <div className="flex items-center gap-2">
                         <ShieldCheck className="h-4 w-4" />
-                        Secure Submission via Finwise Career Solutions Portal
+                        Secure Submission via Smart Aspirants Portal
                     </div>
                     <p className="text-gray-500 mt-2">
                         Redirecting to login in {countdown} seconds...

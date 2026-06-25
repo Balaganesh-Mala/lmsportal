@@ -1,7 +1,7 @@
 {
-  "name": "jobready-server",
+  "name": "smartaspirants-server",
   "version": "1.0.0",
-  "description": "Backend API for JobReady Skills Center",
+  "description": "Backend API for Smart Aspirants",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

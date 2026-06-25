@@ -23,7 +23,7 @@ const CertificateSection = () => {
                         <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
                             Get Certified by <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-300">
-                                Finwise Career Solutions
+                                Smart Aspirants
                             </span>
                         </h2>
 
@@ -61,7 +61,7 @@ const CertificateSection = () => {
                         >
                             <img
                                 src={certificateSample}
-                                alt="Finwise Certificate Sample"
+                                alt="Smart Aspirants Certificate Sample"
                                 className="w-full h-auto rounded-lg shadow-2xl border-[12px] border-white"
                             />
                         </motion.div>

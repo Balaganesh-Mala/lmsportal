@@ -16,7 +16,7 @@ const TopicContentSchema = new mongoose.Schema({
     mcqTests: [{
         testId: { type: mongoose.Schema.Types.ObjectId, ref: 'HiringTest', default: null },
         enabled: { type: Boolean, default: true },
-        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum'], default: 'Basic' }
+        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum', 'Free Trial'], default: 'Basic' }
     }],
     // Tasks (text/file-based challenges)
     tasks: [{
@@ -24,14 +24,14 @@ const TopicContentSchema = new mongoose.Schema({
         description: { type: String, default: '' },
         fileUrl: { type: String, default: '' },    // optional resource file
         filePublicId: { type: String, default: '' },
-        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum'], default: 'Basic' }
+        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum', 'Free Trial'], default: 'Basic' }
     }],
     // Assignments (PDF question, students upload answer)
     assignments: [{
         title: { type: String, required: true },
         questionUrl: { type: String, default: '' },    // question PDF
         questionPublicId: { type: String, default: '' },
-        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum'], default: 'Basic' }
+        requiredTier: { type: String, enum: ['Basic', 'Premium', 'Gold', 'Platinum', 'Free Trial'], default: 'Basic' }
     }]
 }, { timestamps: true });
 

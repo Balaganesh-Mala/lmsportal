@@ -6,7 +6,7 @@ dotenv.config();
 
 // Configure web-push
 webpush.setVapidDetails(
-    process.env.VAPID_EMAIL || 'mailto:info@finwisecareers.com',
+    process.env.VAPID_EMAIL || 'mailto:info@smartaspirants.com',
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
 );
@@ -24,7 +24,7 @@ const sendPushToStudent = async (studentId, payload) => {
 
         const notificationPayload = JSON.stringify({
             notification: {
-                title: payload.title || 'Notification from Finwise',
+                title: payload.title || 'Notification from Smart Aspirants',
                 body: payload.body || '',
                 icon: payload.icon || '/logo192.png',
                 data: {
@@ -62,7 +62,7 @@ const sendPushToMultipleStudents = async (studentIds, payload) => {
 
         const notificationPayload = JSON.stringify({
             notification: {
-                title: payload.title || 'Notification from Finwise',
+                title: payload.title || 'Notification from Smart Aspirants',
                 body: payload.body || '',
                 icon: payload.icon || '/logo192.png',
                 data: {
@@ -99,7 +99,7 @@ const broadcastPushToAllStudents = async (payload) => {
 
         const notificationPayload = JSON.stringify({
             notification: {
-                title: payload.title || 'Notification from Finwise',
+                title: payload.title || 'Notification from Smart Aspirants',
                 body: payload.body || '',
                 icon: payload.icon || '/logo192.png',
                 data: {

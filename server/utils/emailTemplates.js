@@ -1,8 +1,8 @@
 // Helper to get branding
 const getBranding = (settings) => ({
-    name: settings?.siteTitle || 'Finwise Career Solutions',
+    name: settings?.siteTitle || 'Smart Aspirants',
     logo: settings?.logoUrl || '',
-    email: settings?.contact?.email || 'info@finwisecareers.com',
+    email: settings?.contact?.email || 'info@smartaspirants.com',
     phone: settings?.contact?.phone || '+91-XXXXXXXXXX',
     address: settings?.contact?.address || ''
 });
@@ -22,8 +22,7 @@ const generateFeeReminderTemplate = (studentName, amount, dueDate, installmentNo
         <style>
             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #374151; line-height: 1.6; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
-            .header { padding: 0; text-align: center; }
-            .header img { max-width: 100%; display: block; border-top-left-radius: 12px; border-top-right-radius: 12px; }
+            .header { background-color: #4f46e5; padding: 30px; text-align: center; color: #ffffff; font-size: 24px; font-weight: bold; border-top-left-radius: 12px; border-top-right-radius: 12px; }
             .content { padding: 40px; }
             .content p { font-size: 16px; margin-bottom: 20px; }
             .highlight-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin: 30px 0; text-align: center; }
@@ -41,7 +40,7 @@ const generateFeeReminderTemplate = (studentName, amount, dueDate, installmentNo
     <body>
         <div class="container">
             <div class="header">
-                <img src="https://res.cloudinary.com/drzs556ss/image/upload/v1775472964/finwise_assets/mailtemplate.png" alt="${brand.name} Banner" style="width: 100%; display: block; border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                ${brand.name}
             </div>
             
             <div class="content">
@@ -71,7 +70,7 @@ const generateFeeReminderTemplate = (studentName, amount, dueDate, installmentNo
                 <p>If you have already made the payment, please ignore this email or contact our administration regarding the update.</p>
                 
                 <p style="text-align: center; margin-top: 30px;">
-                    <a href="https://finwisecareers.com" class="action-button">Return to Portal</a>
+                    <a href="https://smartaspirants.com" class="action-button">Return to Portal</a>
                 </p>
             </div>
             
@@ -102,7 +101,7 @@ const generatePaymentConfirmationTemplate = (studentName, amount, installmentNo,
         <style>
             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #374151; line-height: 1.6; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
-            .header { padding: 0; text-align: center; }
+            .header { background-color: #10b981; padding: 30px; text-align: center; color: #ffffff; font-size: 24px; font-weight: bold; border-top-left-radius: 12px; border-top-right-radius: 12px; }
             .content { padding: 40px; }
             .highlight-box { background-color: #f0fdf4; border: 1px solid #dcfce7; border-radius: 8px; padding: 25px; margin: 30px 0; text-align: center; }
             .highlight-box h2 { margin: 0; font-size: 32px; color: #166534; }
@@ -114,21 +113,21 @@ const generatePaymentConfirmationTemplate = (studentName, amount, installmentNo,
     <body>
         <div class="container">
             <div class="header">
-                <img src="https://res.cloudinary.com/drzs556ss/image/upload/v1775472964/finwise_assets/mailtemplate.png" alt="Banner" style="width: 100%; display: block;">
+                Payment Received
             </div>
             <div class="content">
                 <p>Dear <strong>${studentName}</strong>,</p>
-                <p>We have successfully received your payment for <strong>Installment #${installmentNo}</strong>. Thank you for your continued commitment to your studies at Finwise.</p>
+                <p>We have successfully received your payment for <strong>Installment #${installmentNo}</strong>. Thank you for your continued commitment to your studies at Smart Aspirants.</p>
                 
                 <div class="highlight-box">
                     <h2>${formattedAmount}</h2>
                     <p>Payment Received on ${today}</p>
                 </div>
                 
-                <p>You can find your official receipt at <a href="https://learning.finwisecareers.com" style="color: #2563eb; font-weight: 600; text-decoration: none;">learning.finwisecareers.com</a> under the <strong>Payments</strong> tab.</p>
+                <p>You can find your official receipt at <a href="https://learning.smartaspirants.com" style="color: #2563eb; font-weight: 600; text-decoration: none;">learning.smartaspirants.com</a> under the <strong>Payments</strong> tab.</p>
                 
                 <p style="text-align: center; margin-top: 30px;">
-                    <a href="https://learning.finwisecareers.com/payments" class="action-button">View Receipt in Portal</a>
+                    <a href="https://learning.smartaspirants.com/payments" class="action-button">View Receipt in Portal</a>
                 </p>
             </div>
             <div class="footer">

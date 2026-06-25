@@ -46,10 +46,16 @@ const CoursePlayer = () => {
     };
 
     const hasTierAccess = (requiredTier) => {
+        const req = (requiredTier || 'Basic').trim().toLowerCase();
+        const isTrialActive = studentUser?.trialEndsAt && new Date() < new Date(studentUser.trialEndsAt);
+        
+        if (req === 'free trial' || req === 'trial') {
+            return !!(isTrialActive || studentUser?.isSubscribed);
+        }
+
         const studentLevel = getStudentTierLevel();
-        // Case-insensitive mapping for required tier too
-        const req = (requiredTier || 'Basic').charAt(0).toUpperCase() + (requiredTier || 'Basic').slice(1).toLowerCase();
-        const requiredLevel = TIER_LEVELS[req] || 1; 
+        const reqTierName = (requiredTier || 'Basic').charAt(0).toUpperCase() + (requiredTier || 'Basic').slice(1).toLowerCase();
+        const requiredLevel = TIER_LEVELS[reqTierName] || 1; 
         return studentLevel >= requiredLevel;
     };
 
@@ -195,7 +201,7 @@ const CoursePlayer = () => {
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/student/progress/update`, payload);
             if (res.data.success) {
                 setProgress(prev => ({ ...prev, [topicId]: res.data.progress }));
-                window.dispatchEvent(new CustomEvent('finwise-activity-sync'));
+                window.dispatchEvent(new CustomEvent('smart-aspirants-activity-sync'));
             }
         } catch (err) {
             console.error('Auto progress sync failed', err);
@@ -652,7 +658,7 @@ const CoursePlayer = () => {
                 toast.success('Lesson Completed!');
                 fireSuccessBlast();
                 // Dispatch global sync event for real-time Navbar update
-                window.dispatchEvent(new CustomEvent('finwise-activity-sync'));
+                window.dispatchEvent(new CustomEvent('smart-aspirants-activity-sync'));
             }
         } catch (err) {
             console.error('Progress sync failed', err);

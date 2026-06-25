@@ -25,7 +25,7 @@ const Footer = () => {
   const logo = settings?.logoUrl || '';
   const address = getContactInfo('address') || '123 Skills Ave, Tech City, State';
   const phone = getContactInfo('phone') || '+1 (555) 123-4567';
-  const email = getContactInfo('email') || 'info@jobreadyskills.com';
+  const email = getContactInfo('email') || 'info@smartaspirants.com';
 
   return (
     <footer className="bg-black text-gray-300 pt-20 pb-10 border-t border-gray-800">
@@ -74,8 +74,6 @@ const Footer = () => {
             <ul className="space-y-4 text-sm">
               <li><Link to="/" className="hover:text-indigo-400 transition-colors block">Home</Link></li>
               <li><Link to="/about" className="hover:text-indigo-400 transition-colors block">About Us</Link></li>
-              <li><Link to="/career" className="hover:text-indigo-400 transition-colors block">Careers</Link></li>
-              <li><Link to="/blogs" className="hover:text-indigo-400 transition-colors block">Latest Blogs</Link></li>
               <li><Link to="/contact" className="hover:text-indigo-400 transition-colors block">Contact Us</Link></li>
             </ul>
           </div>

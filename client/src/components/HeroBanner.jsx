@@ -79,62 +79,67 @@ const HeroBanner = () => {
     };
 
     return (
-        <section className="relative min-h-[90vh] flex items-center bg-gradient-to-br from-primary-100 via-white to-gray-50 overflow-hidden pt-[32%] pb-12 md:pt-[10%] mx-auto md:px-24 lg:px-24">
+        <section className="relative min-h-[95vh] flex items-center bg-gradient-to-br from-orange-50/40 via-white to-gray-50/50 overflow-hidden pt-32 pb-16 md:pt-28 md:pb-20 mx-auto px-4 md:px-12 lg:px-24">
 
             {/* Light Grid Background */}
             <div className="absolute inset-0 pointer-events-none" style={{
-                backgroundImage: `linear-gradient(rgba(8, 131, 149, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(8, 131, 149, 0.05) 1px, transparent 1px)`,
-                backgroundSize: '50px 50px',
-                maskImage: 'radial-gradient(circle at center, black 30%, transparent 80%)',
-                WebkitMaskImage: 'radial-gradient(circle at center, black 30%, transparent 80%)'
+                backgroundImage: `linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px',
+                maskImage: 'radial-gradient(circle at center, black 40%, transparent 90%)',
+                WebkitMaskImage: 'radial-gradient(circle at center, black 40%, transparent 90%)'
             }}></div>
 
             {/* Background Blobs */}
-            <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[400px] md:w-[800px] h-[400px] md:h-[800px] bg-primary-100/20 rounded-full blur-3xl opacity-50 md:opacity-100" />
-            <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-accent-50 rounded-full blur-3xl opacity-50 md:opacity-100" />
+            <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[400px] md:w-[800px] h-[400px] md:h-[800px] bg-orange-100/30 rounded-full blur-3xl opacity-60" />
+            <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-amber-50/40 rounded-full blur-3xl opacity-60" />
 
-            <div className="container mx-auto px-4 md:px-6 relative z-10 grid lg:grid-cols-2 gap-12 lg:gap-12 items-center">
+            <div className="container mx-auto relative z-10 grid lg:grid-cols-12 gap-12 items-center">
 
                 {/* Text Content (Left) */}
-                <div className="max-w-2xl text-center lg:text-left mx-auto lg:mx-0 mr-[40px]">
+                <div className="lg:col-span-6 text-center lg:text-left max-w-2xl mx-auto lg:mx-0">
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 25 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6 }}
                     >
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-50 text-accent-700 text-xs md:text-sm font-semibold mb-6">
-                            <span className="relative flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0d9488] opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-[#0d9488]"></span>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-100 text-orange-700 text-xs md:text-sm font-semibold mb-6">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
                             </span>
                             New Batch Starting Soon
                         </div>
 
-                        <h1 className="text-3xl md:text-5xl lg:text-5xl font-bold text-gray-900 leading-[1.1] mb-6">
-                            Become Job Ready for MNC Finance  <br className="hidden md:block" />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-[#E2D6FE] block md:inline mt-2 md:mt-0">
-                                Roles in 2-3 Months
-                            </span>
+                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.12] mb-6 tracking-tight">
+                            Become Job Ready for <br className="hidden md:block" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 block md:inline">
+                                MNC Finance Roles
+                            </span> <br />
+                            in 2-3 Months
                         </h1>
 
-                        <p className="text-base md:text-xl text-gray-600 mb-6 leading-relaxed max-w-lg mx-auto lg:mx-0">
-                            Master Invetment Banking Operations | Fund Accounting | Corporate Accounting | KYC/AML | Data Skills
+                        <p className="text-base md:text-lg text-gray-600 mb-8 leading-relaxed max-w-lg mx-auto lg:mx-0 font-medium">
+                            Master Investment Banking Operations | Fund Accounting | Corporate Accounting | KYC/AML | Data Skills
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-8">
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => setIsDemoModalOpen(true)}
-                                className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-xl shadow-gray-200"
+                                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-orange-600 to-amber-500 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 transition-all flex items-center justify-center gap-2"
                             >
                                 Book your Slot <ArrowRight size={20} />
-                            </button>
-                            <a
+                            </motion.button>
+                            <motion.a
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 href={`tel:${phone}`}
-                                className="w-full sm:w-auto px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                                className="w-full sm:w-auto px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-bold hover:bg-orange-50/10 hover:border-orange-200 hover:text-orange-600 transition-all flex items-center justify-center gap-2"
                             >
-                                <Phone size={20} className="text-gray-900" />
+                                <Phone size={20} className="text-orange-600" />
                                 Call Now
-                            </a>
+                            </motion.a>
                         </div>
 
                         {/* Trust Section */}
@@ -142,20 +147,20 @@ const HeroBanner = () => {
                             <div className="flex items-center gap-2">
                                 <div className="flex -space-x-2">
                                     {[img01, img02, img03, img04, img05, img06].map((img, index) => (
-                                        <div key={index} className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-bold text-gray-500 overflow-hidden">
+                                        <div key={index} className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-bold text-gray-500 overflow-hidden shadow-sm">
                                             <img src={img} alt={`User ${index + 1}`} className="w-full h-full object-cover" />
                                         </div>
                                     ))}
-                                    <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-gray-600">
+                                    <div className="w-8 h-8 rounded-full bg-orange-50 border-2 border-white flex items-center justify-center text-[10px] font-bold text-orange-600 shadow-sm">
                                         +
                                     </div>
                                 </div>
-                                <div className="text-sm text-left">
+                                <div className="text-sm text-left ml-2">
                                     <div className="flex items-center gap-2 mb-1">
                                         <img
                                             src={googleLogo}
                                             alt="Google"
-                                            className="w-18 h-4"
+                                            className="w-18 h-4 object-contain"
                                         />
                                         <span className="text-gray-900 font-bold">4.9/5</span>
                                         <div className="flex items-center text-yellow-400 text-xs">
@@ -166,7 +171,7 @@ const HeroBanner = () => {
                                             ))}
                                         </div>
                                     </div>
-                                    <p className="text-gray-500 text-xs">Rated by Students</p>
+                                    <p className="text-gray-500 text-xs">Trusted by 1000+ Students</p>
                                 </div>
                             </div>
                         </div>
@@ -174,22 +179,21 @@ const HeroBanner = () => {
                     </motion.div>
                 </div>
                 {/* Visual Content (Right) - Student Carousel */}
-                <div className="relative h-full w-full min-h-[400px] md:min-h-[500px] flex items-center justify-center mt-8 lg:mt-0">
+                <div className="lg:col-span-6 relative h-full w-full min-h-[400px] md:min-h-[500px] flex items-center justify-center lg:pl-6">
                     <div className="w-full max-w-sm md:max-w-lg lg:max-w-xl">
                         {isLoading ? (
                             <div className="w-full flex gap-4 md:gap-6 items-center justify-center overflow-hidden px-2">
                                 {[1, 2, 3].map((item) => (
-                                    <div key={item} className={`relative flex flex-col bg-white/60 border border-gray-100 rounded-[12px] h-[550px] md:h-[400px] w-full max-w-[280px] md:max-w-full animate-pulse ${item > 1 ? 'hidden md:flex flex-1' : 'flex-1'} ${item > 2 ? 'md:hidden xl:flex' : ''}`}>
-                                        <div className="h-[35%] p-4 md:p-6 flex flex-col justify-between">
-                                            <div className="w-20 md:w-24 h-5 md:h-6 bg-gray-200 rounded-md"></div>
-                                            <div>
-                                                <div className="w-full h-2 md:h-3 bg-gray-200 rounded mt-1"></div>
-                                                <div className="w-4/5 h-2 md:h-3 bg-gray-200 rounded mt-2"></div>
-                                                <div className="w-16 h-3 md:h-4 bg-gray-200 rounded mt-3"></div>
+                                    <div key={item} className={`relative flex flex-col bg-white/60 border border-gray-100 rounded-2xl h-[420px] w-full max-w-[280px] md:max-w-full animate-pulse ${item > 1 ? 'hidden md:flex flex-1' : 'flex-1'}`}>
+                                        <div className="h-[35%] p-6 flex flex-col justify-between">
+                                            <div className="w-24 h-6 bg-gray-200 rounded-md"></div>
+                                            <div className="space-y-2">
+                                                <div className="w-full h-3 bg-gray-200 rounded"></div>
+                                                <div className="w-4/5 h-3 bg-gray-200 rounded"></div>
                                             </div>
                                         </div>
-                                        <div className="h-[65%] w-full bg-gray-200 flex items-end p-4 md:p-6 rounded-b-[12px]">
-                                            <div className="w-3/4 h-4 md:h-5 bg-gray-300 rounded"></div>
+                                        <div className="h-[65%] w-full bg-gray-200 flex items-end p-6 rounded-b-2xl">
+                                            <div className="w-3/4 h-5 bg-gray-300 rounded"></div>
                                         </div>
                                     </div>
                                 ))}
@@ -197,37 +201,37 @@ const HeroBanner = () => {
                         ) : banners.length > 0 ? (
                         <Slider key={slidesToShow} {...settings}>
                             {banners.map((item) => (
-                                <div key={item._id} className="px-2 pb-8 pt-4 cursor-grab active:cursor-grabbing">
-                                    <div className="relative group overflow-hidden rounded-[12px] transition-all duration-300 h-[550px] md:h-[400px] flex flex-col bg-white  mx-auto max-w-[280px] md:max-w-full">
+                                <div key={item._id} className="px-3 pb-8 pt-4 cursor-grab active:cursor-grabbing">
+                                    <div className="relative group overflow-hidden rounded-2xl transition-all duration-500 h-[430px] flex flex-col bg-white border border-gray-100 shadow-md hover:shadow-xl hover:border-orange-500/10 mx-auto max-w-[280px] md:max-w-full hover:-translate-y-1">
 
-                                        {/* Top Content Area (approx 35%) - clean white bg */}
-                                        <div className="relative h-[35%] p-4 md:p-6 flex flex-col justify-between z-20 bg-white">
+                                        {/* Top Content Area (approx 35%) */}
+                                        <div className="relative h-[38%] p-5 flex flex-col justify-between z-20 bg-white">
                                             <div className="flex items-center justify-between w-full">
-                                                <span className="inline-block px-1 py-1 bg-accent-50 text-accent-700 text-[8px] font-bold uppercase tracking-wider rounded-md border border-accent-200 mb-2">
+                                                <span className="inline-block px-2.5 py-1 bg-orange-500/10 text-orange-600 text-[9px] font-extrabold uppercase tracking-wider rounded-lg border border-orange-500/20">
                                                     Success Story
                                                 </span>
                                             </div>
 
-                                            <div className="">
-                                                <p className="text-gray-500 text-[10px] font-medium line-clamp-3 md:line-clamp-4">
+                                            <div className="mt-2">
+                                                <p className="text-gray-500 text-[11px] font-medium line-clamp-3 leading-relaxed">
                                                     {item.description || "Placed at top firms"}
                                                 </p>
-                                                <p className="text-gray-900 text-[12px] font-bold truncate mt-1">Placed at:</p>
+                                                <p className="text-gray-900 text-[12px] font-bold mt-2">Placed at:</p>
                                             </div>
                                         </div>
 
-                                        {/* Bottom Image Area (approx 65%) - Vibrant Gradient Background */}
-                                        <div className="relative h-[100%] md:h-[65%] w-full flex items-end justify-center z-10 bg-gradient-to-t from-primary-600 to-transparent overflow-hidden">
+                                        {/* Bottom Image Area (approx 62%) - Orange/Amber Gradient */}
+                                        <div className="relative h-[62%] w-full flex items-end justify-center z-10 bg-gradient-to-t from-orange-600 to-transparent overflow-hidden">
 
                                             {/* Title Overlay */}
-                                            <div className="absolute bottom-4 left-0 right-0 px-4 md:px-6 z-20 text-start">
-                                                <h3 className="text-[12px] md:text-sm font-bold text-white tracking-wide drop-shadow-lg leading-tight truncate">
+                                            <div className="absolute bottom-5 left-0 right-0 px-5 z-20 text-start">
+                                                <h3 className="text-sm font-bold text-white tracking-wide drop-shadow-md leading-tight truncate">
                                                     {item.title || "Student Name"}
                                                 </h3>
                                             </div>
 
-                                            {/* Abstract decorative shape for interest */}
-                                            <div className="absolute top-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 to-transparent"></div>
+                                            {/* Decorative shape */}
+                                            <div className="absolute top-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/15 to-transparent pointer-events-none"></div>
 
                                             <img
                                                 src={item.fileUrl}
@@ -235,8 +239,8 @@ const HeroBanner = () => {
                                                 className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
                                             />
 
-                                            {/* Bottom overlay for depth */}
-                                            <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-primary-900/60 to-transparent"></div>
+                                            {/* Bottom dark/orange gradient overlay for depth */}
+                                            <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-orange-950/80 via-orange-900/40 to-transparent"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -246,7 +250,7 @@ const HeroBanner = () => {
                     </div>
 
                     {/* Decorative Background Elements behind carousel */}
-                    <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[80%] bg-gradient-to-tr from-primary-200/20 to-accent-200/20 rounded-[3rem] rotate-6 blur-2xl hidden md:block"></div>
+                    <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[80%] bg-gradient-to-tr from-orange-200/20 to-amber-200/20 rounded-[3rem] rotate-6 blur-2xl hidden md:block"></div>
                 </div>
 
             </div>

@@ -252,14 +252,14 @@ const Layout = () => {
             fetchRanks();
             fetchWallet();
         };
-        window.addEventListener('finwise-activity-sync', handleSync);
+        window.addEventListener('smart-aspirants-activity-sync', handleSync);
 
         const interval = setInterval(() => {
             fetchRanks();
         }, 60000 * 5); // Check every 5 mins
         return () => {
             clearInterval(interval);
-            window.removeEventListener('finwise-activity-sync', handleSync);
+            window.removeEventListener('smart-aspirants-activity-sync', handleSync);
         };
     }, [user?._id]);
 
@@ -360,13 +360,13 @@ const Layout = () => {
                     <div className="flex items-center gap-3">
                         <img
                             src={settings?.logoUrl || logoImg}
-                            alt="Finwise Logo"
+                            alt="Smart Aspirants Logo"
                             className="h-10 w-10 object-contain rounded-xl drop-shadow-sm shrink-0"
                         />
                         {!collapsed && (
                             <div className="transition-opacity duration-300 overflow-hidden">
                                 <span className="block text-lg font-extrabold tracking-tight text-slate-100 leading-none bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300 whitespace-nowrap">
-                                    {settings?.siteTitle || 'Finwise Career Solutions'}
+                                    {settings?.siteTitle || 'Smart Aspirants'}
                                 </span>
                                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mt-0.5 block">Student Portal</span>
                             </div>

@@ -117,7 +117,7 @@ const Layout = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
-  const [settings, setSettings] = useState({ siteTitle: 'JobReady', logoUrl: '' });
+  const [settings, setSettings] = useState({ siteTitle: 'Smart Aspirants', logoUrl: '' });
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem('adminUser');
     return stored ? JSON.parse(stored) : null;
@@ -344,7 +344,7 @@ const Layout = () => {
 
 
   const userName = user?.name || 'Administrator';
-  const userEmail = user?.email || 'admin@finwisecs.com';
+  const userEmail = user?.email || 'admin@smartaspirants.com';
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (

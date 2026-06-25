@@ -25,6 +25,13 @@ const StudyMaterials = () => {
     };
 
     const hasTierAccess = (requiredTier) => {
+        const req = (requiredTier || 'Basic').trim().toLowerCase();
+        const isTrialActive = user?.trialEndsAt && new Date() < new Date(user.trialEndsAt);
+        
+        if (req === 'free trial' || req === 'trial') {
+            return !!(isTrialActive || user?.isSubscribed);
+        }
+
         if (!user?.isSubscribed) return false;
         const studentTier = (user.planTier || '').charAt(0).toUpperCase() + (user.planTier || '').slice(1).toLowerCase();
         const reqTier = (requiredTier || 'Basic').charAt(0).toUpperCase() + (requiredTier || 'Basic').slice(1).toLowerCase();
@@ -79,7 +86,7 @@ const StudyMaterials = () => {
                     </div>
                 </div>
                 <div className="flex flex-col items-center">
-                    <p className="text-slate-800 font-black uppercase tracking-[0.2em] animate-pulse">Finwise Library</p>
+                    <p className="text-slate-800 font-black uppercase tracking-[0.2em] animate-pulse">Smart Aspirants Library</p>
                     <p className="text-xs text-slate-400 font-bold uppercase mt-2">Initializing Secure Session...</p>
                 </div>
             </div>
@@ -108,7 +115,7 @@ const StudyMaterials = () => {
                             <h2 className="text-xs md:text-sm font-black text-slate-900 tracking-tight leading-tight truncate">{selectedMaterial.title}</h2>
                             <div className="flex items-center gap-1.5 mt-1">
                                 <span className="flex h-1 w-1 rounded-full bg-emerald-500"></span>
-                                <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">Secured Instance · Finwise Shield</p>
+                                <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">Secured Instance · Smart Aspirants Shield</p>
                             </div>
                         </div>
                     </div>

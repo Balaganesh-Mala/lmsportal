@@ -21,7 +21,7 @@ const generateReceiptPDF = async (paymentDetails, studentDetails) => {
         const filePath = `./uploads/receipts/receipt_${paymentDetails._id}.pdf`;
         doc.pipe(fs.createWriteStream(filePath));
         
-        doc.fontSize(20).text('Finwise Institute - Fee Receipt', { align: 'center' });
+        doc.fontSize(20).text('Smart Aspirants - Fee Receipt', { align: 'center' });
         doc.moveDown();
         doc.fontSize(12).text(`Student Name: ${studentDetails.name}`);
         doc.text(`Reference ID: ${paymentDetails.reference_id}`);

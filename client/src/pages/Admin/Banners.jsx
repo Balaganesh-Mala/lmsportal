@@ -9,7 +9,7 @@ const Banners = () => {
             type: 'image',
             imageUrl: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80',
             title: 'Master Your Future',
-            subtitle: 'Join JobReady Skills Center',
+            subtitle: 'Join Smart Aspirants Skills Center',
             link: '/courses',
             active: true
         },

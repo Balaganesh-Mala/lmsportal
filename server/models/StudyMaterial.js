@@ -58,7 +58,7 @@ const studyMaterialSchema = new mongoose.Schema({
     },
     requiredTier: { 
         type: String, 
-        enum: ['Basic', 'Premium', 'Gold', 'Platinum'], 
+        enum: ['Basic', 'Premium', 'Gold', 'Platinum', 'Free Trial'], 
         default: 'Basic' 
     },
     uploadedBy: {

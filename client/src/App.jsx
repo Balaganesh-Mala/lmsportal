@@ -7,9 +7,7 @@ import FloatingContact from './components/FloatingContact';
 import WhatsAppButton from './components/WhatsAppButton';
 import FloatingLocation from './components/FloatingLocation';
 import ScrollToTop from './components/ScrollToTop';
-import Careers from './pages/Careers';
-import Blogs from './pages/Blogs';
-import BlogDetails from './pages/BlogDetails';
+
 import Contact from './pages/Contact';
 import Courses from './pages/Courses';
 import CourseDetails from './pages/CourseDetails';
@@ -69,14 +67,7 @@ function App() {
                 <Footer />
               </div>
             } />
-            <Route path="/career" element={
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <QuotePopup />
-                <main className="flex-grow"><Careers /></main>
-                <Footer />
-              </div>
-            } />
+
             <Route path="/about" element={
               <div className="flex flex-col min-h-screen">
                 <Navbar />
@@ -85,30 +76,7 @@ function App() {
                 <Footer />
               </div>
             } />
-            <Route path="/blogs" element={
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <QuotePopup />
-                <main className="flex-grow"><Blogs /></main>
-                <Footer />
-              </div>
-            } />
-            <Route path="/blogs/:id" element={
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <QuotePopup />
-                <main className="flex-grow"><BlogDetails /></main>
-                <Footer />
-              </div>
-            } />
-            <Route path="/blogs/:id" element={
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <QuotePopup />
-                <main className="flex-grow"><BlogDetails /></main>
-                <Footer />
-              </div>
-            } />
+
             <Route path="/contact" element={
               <div className="flex flex-col min-h-screen">
                 <Navbar />

@@ -139,10 +139,10 @@ const Login = () => {
                     ) : (
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg"
                             style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)' }}>
-                            {settings?.siteTitle?.charAt(0) || 'F'}
+                            {settings?.siteTitle?.charAt(0) || 'S'}
                         </div>
                     )}
-                    <span className="text-white font-bold text-lg tracking-tight">{settings?.siteTitle || 'Finwise Careers'}</span>
+                    <span className="text-white font-bold text-lg tracking-tight">{settings?.siteTitle || 'Smart Aspirants'}</span>
                 </motion.div>
 
                 {/* Middle: Hero content */}

@@ -8,7 +8,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [settings, setSettings] = useState({ siteTitle: 'JobReady', logoUrl: '' });
+  const [settings, setSettings] = useState({ siteTitle: 'Smart Aspirants', logoUrl: '' });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 

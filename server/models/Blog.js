@@ -31,7 +31,7 @@ const BlogSchema = new mongoose.Schema({
     },
     author: {
         type: String,
-        default: 'Finwise Career Solutions Team'
+        default: 'Smart Aspirants Team'
     },
     category: {
         type: String,

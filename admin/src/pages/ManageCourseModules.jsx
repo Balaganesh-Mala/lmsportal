@@ -852,6 +852,7 @@ const ManageCourseModules = () => {
                                     onChange={(e) => setTopicForm({ ...topicForm, requiredTier: e.target.value })}
                                     className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm font-bold text-amber-900 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
                                 >
+                                    <option value="Free Trial">Free Trial</option>
                                     <option value="Basic">Basic (Premium Plan)</option>
                                     <option value="Intermediate">Intermediate (Gold Plan)</option>
                                     <option value="Full">Full (Platinum Plan)</option>
@@ -940,6 +941,7 @@ const ManageCourseModules = () => {
                                         onChange={e => setNewNoteTier(e.target.value)}
                                         className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:border-indigo-500 outline-none bg-white font-bold text-indigo-700"
                                     >
+                                        <option value="Free Trial">Free Trial</option>
                                         <option value="Basic">Basic (Premium Plan)</option>
                                         <option value="Premium">Premium Only</option>
                                         <option value="Gold">Gold Only</option>
@@ -1102,6 +1104,7 @@ const ManageCourseModules = () => {
                                                         onChange={e => setSelectedQuizTier(e.target.value)}
                                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-indigo-500 outline-none text-sm bg-white font-bold text-indigo-700"
                                                     >
+                                                        <option value="Free Trial">Free Trial</option>
                                                         <option value="Basic">Basic (Premium Plan)</option>
                                                         <option value="Premium">Premium Only</option>
                                                         <option value="Gold">Gold Only</option>
@@ -1161,6 +1164,7 @@ const ManageCourseModules = () => {
                                                         onChange={e => setNewTaskTier(e.target.value)}
                                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white font-bold text-indigo-700 focus:border-indigo-500 outline-none"
                                                     >
+                                                        <option value="Free Trial">Free Trial</option>
                                                         <option value="Basic">Basic (Premium Plan)</option>
                                                         <option value="Premium">Premium Only</option>
                                                         <option value="Gold">Gold Only</option>
@@ -1240,6 +1244,7 @@ const ManageCourseModules = () => {
                                                         onChange={e => setNewAssignTier(e.target.value)}
                                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white font-bold text-indigo-700 focus:border-indigo-500 outline-none"
                                                     >
+                                                        <option value="Free Trial">Free Trial</option>
                                                         <option value="Basic">Basic (Premium Plan)</option>
                                                         <option value="Premium">Premium Only</option>
                                                         <option value="Gold">Gold Only</option>

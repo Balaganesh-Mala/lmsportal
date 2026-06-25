@@ -85,7 +85,7 @@ const NotFound = () => {
                     transition={{ delay: 0.7 }}
                     className="mt-16 text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]"
                 >
-                    Finwise Career Solutions
+                    Smart Aspirants
                 </motion.p>
             </div>
         </div>

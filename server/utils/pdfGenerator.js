@@ -77,7 +77,7 @@ exports.generateInterviewPDF = (data, res) => {
           .font("Helvetica")
           .fontSize(7)
           .text(
-            "This is a computer-generated report based on your mock interview performance evaluated by Finwise Career Solutions.",
+            "This is a computer-generated report based on your mock interview performance evaluated by Smart Aspirants.",
             45,
             doc.page.height - 28,
             {
@@ -93,7 +93,7 @@ exports.generateInterviewPDF = (data, res) => {
         .fillColor(primary)
         .font("Helvetica-Bold")
         .fontSize(22)
-        .text("FINWISE CAREER SOLUTIONS", 45, 45);
+        .text("SMART ASPIRANTS", 45, 45);
 
       doc
         .fillColor(gray)
@@ -390,7 +390,7 @@ for (let i = 0; i < range.count; i++) {
     .font("Helvetica")
     .fontSize(7)
     .text(
-      "This is a computer-generated report based on your mock interview performance evaluated by Finwise Career Solutions.",
+      "This is a computer-generated report based on your mock interview performance evaluated by Smart Aspirants.",
       45,
       doc.page.height - 28,
       {
@@ -452,7 +452,7 @@ exports.generateTrainerReportPDF = (studentsData, res) => {
         .fillColor(primary)
         .font("Helvetica-Bold")
         .fontSize(20)
-        .text("FINWISE CAREER SOLUTIONS", 30, 30);
+        .text("SMART ASPIRANTS", 30, 30);
 
       doc
         .fillColor(gray)
@@ -584,7 +584,7 @@ exports.generateTrainerReportPDF = (studentsData, res) => {
           .font("Helvetica")
           .fontSize(7)
           .text(
-            "Finwise Career Solutions - Trainer Report",
+            "Smart Aspirants - Trainer Report",
             30,
             doc.page.height - 20,
             {

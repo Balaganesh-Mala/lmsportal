@@ -135,9 +135,9 @@ const Register = () => {
                     {settings?.logoUrl
                         ? <img src={settings.logoUrl} alt={settings.siteTitle} className="h-10 w-auto object-contain" />
                         : <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-lg"
-                            style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>{settings?.siteTitle?.charAt(0) || 'F'}</div>
+                            style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)' }}>{settings?.siteTitle?.charAt(0) || 'S'}</div>
                     }
-                    <span className="text-white font-bold text-lg">{settings?.siteTitle || 'Finwise Careers'}</span>
+                    <span className="text-white font-bold text-lg">{settings?.siteTitle || 'Smart Aspirants'}</span>
                 </motion.div>
 
                 {/* Hero */}

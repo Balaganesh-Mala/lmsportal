@@ -8,7 +8,7 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
-  const [settings, setSettings] = useState({ siteTitle: 'JobReady', logoUrl: '' });
+  const [settings, setSettings] = useState({ siteTitle: 'Smart Aspirants', logoUrl: '' });
 
   // Fetch site settings (logo, title)
   useEffect(() => {

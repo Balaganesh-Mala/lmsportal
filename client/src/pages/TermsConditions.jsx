@@ -53,7 +53,7 @@ const TermsConditions = () => {
     return (
         <div className="bg-[#F9FAFB] min-h-screen relative font-sans text-slate-900 pb-20">
             <SEO 
-                title="Terms & Conditions | Finwise Career Solutions" 
+                title="Terms & Conditions | Smart Aspirants" 
                 description="Read our comprehensive terms of service, conditions for enrollment, and platform usage policies."
             />
             
@@ -154,7 +154,7 @@ const TermsConditions = () => {
                     {/* Main Content Area */}
                     <div className="lg:w-2/3 space-y-10">
                         <div className="bg-indigo-50 border border-indigo-100 p-6 md:p-8 rounded-2xl text-indigo-900 text-lg leading-relaxed shadow-sm">
-                            <strong className="text-indigo-700 block mb-2 font-black">Welcome to Finwise Career Solutions.</strong> 
+                            <strong className="text-indigo-700 block mb-2 font-black">Welcome to Smart Aspirants.</strong> 
                             By browsing, accessing, or using our website, platform, and educational services, you acknowledge that you have read, understood, and agree to be legally bound by these Terms and Conditions.
                         </div>
 
@@ -165,7 +165,7 @@ const TermsConditions = () => {
                             </div>
                             <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed">
                                 <p>
-                                    Welcome to <strong>Finwise Career Solutions</strong>. By browsing, accessing, or using our website, platform, and educational services, you acknowledge that you have read, understood, and agree to be legally bound by these Terms and Conditions. If you do not agree with any part of these terms, please do not use our services.
+                                    Welcome to <strong>Smart Aspirants</strong>. By browsing, accessing, or using our website, platform, and educational services, you acknowledge that you have read, understood, and agree to be legally bound by these Terms and Conditions. If you do not agree with any part of these terms, please do not use our services.
                                 </p>
                             </div>
                         </section>
@@ -201,7 +201,7 @@ const TermsConditions = () => {
                             </div>
                             <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed">
                                 <p>
-                                    All fees must be paid in full prior to the commencement of the course or exactly as per the agreed-upon installment structure (if applicable). Finwise Career Solutions reserves the right to suspend or restrict access if installments are overdue.
+                                    All fees must be paid in full prior to the commencement of the course or exactly as per the agreed-upon installment structure (if applicable). Smart Aspirants reserves the right to suspend or restrict access if installments are overdue.
                                 </p>
                                 <div className="mt-6 border-l-4 border-indigo-500 pl-6 py-2 bg-indigo-50/50 rounded-r-xl">
                                     <strong className="text-indigo-900 block mb-2 font-bold">Refund Policy</strong>
@@ -217,7 +217,7 @@ const TermsConditions = () => {
                             </div>
                             <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed">
                                 <p>
-                                    All content provided by Finwise Career Solutions—including but not limited to video lectures, PDF notes, study materials, curriculum design, assignments, code, and site graphics—is the exclusive intellectual property of Finwise Career Solutions and is protected by comprehensive copyright laws. 
+                                    All content provided by Smart Aspirants—including but not limited to video lectures, PDF notes, study materials, curriculum design, assignments, code, and site graphics—is the exclusive intellectual property of Smart Aspirants and is protected by comprehensive copyright laws.
                                 </p>
                                 <p>
                                     You are granted a limited, personal, non-transferable license to view and use these materials solely for your personal educational development. Commercial reproduction or external distribution is firmly prohibited.
@@ -232,7 +232,7 @@ const TermsConditions = () => {
                             </div>
                             <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed">
                                 <p>
-                                    For courses that include "Placement Assistance", Finwise Career Solutions is committed to providing resume building, interview preparation, and connecting students with relevant hiring partners. However, we <strong>do not guarantee job placement</strong>, as hiring decisions remain entirely at the discretion of the recruiting organizations. Our goal is to maximize your employability through premium skill training.
+                                    For courses that include "Placement Assistance", Smart Aspirants is committed to providing resume building, interview preparation, and connecting students with relevant hiring partners. However, we <strong>do not guarantee job placement</strong>, as hiring decisions remain entirely at the discretion of the recruiting organizations. Our goal is to maximize your employability through premium skill training.
                                 </p>
                             </div>
                         </section>
@@ -256,7 +256,7 @@ const TermsConditions = () => {
                             </div>
                             <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed">
                                 <p>
-                                    Finwise Career Solutions reserves the right to modify, alter, or update these Terms and Conditions at any time without prior notice. The updated date at the top of this page indicates the latest revision. Continued use of our platform post-modification implies your acceptance of the newly established terms.
+                                    Smart Aspirants reserves the right to modify, alter, or update these Terms and Conditions at any time without prior notice. The updated date at the top of this page indicates the latest revision. Continued use of our platform post-modification implies your acceptance of the newly established terms.
                                 </p>
                             </div>
                         </section>

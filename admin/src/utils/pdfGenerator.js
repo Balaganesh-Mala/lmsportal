@@ -50,7 +50,7 @@ export const generateReceiptPdfBase64 = async ({ installment, payment, settings,
             doc.setTextColor(...darkColor);
             doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
-            doc.text(settings?.siteTitle || 'FINWISE CAREER SOLUTIONS', 15, 30);
+            doc.text(settings?.siteTitle || 'SMART ASPIRANTS', 15, 30);
             
             doc.setTextColor(...lightColor);
             doc.setFontSize(8);
@@ -199,7 +199,7 @@ export const generateReceiptPdfBase64 = async ({ installment, payment, settings,
             
             doc.setTextColor(...lightColor);
             doc.setFontSize(7);
-            doc.text(`FOR ${settings?.siteTitle?.toUpperCase() || 'FINWISE CAREER SOLUTIONS'}`, 167.5, currY + 24, { align: 'center' });
+            doc.text(`FOR ${settings?.siteTitle?.toUpperCase() || 'SMART ASPIRANTS'}`, 167.5, currY + 24, { align: 'center' });
 
             // Final Footer Line
             doc.setFillColor(...primaryColor);
@@ -207,7 +207,7 @@ export const generateReceiptPdfBase64 = async ({ installment, payment, settings,
             
             doc.setTextColor(...lightColor);
             doc.setFontSize(7);
-            doc.text('THIS IS A COMPUTER GENERATED OFFICIAL RECORD. VERIFY AT FINWISECAREERS.COM', 105, 285, { align: 'center' });
+            doc.text('THIS IS A COMPUTER GENERATED OFFICIAL RECORD. VERIFY AT SMARTASPIRANTS.COM', 105, 285, { align: 'center' });
 
             // Convert to Base64
             const base64String = doc.output('datauristring');

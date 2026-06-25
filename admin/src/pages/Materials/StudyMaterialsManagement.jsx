@@ -467,6 +467,7 @@ const StudyMaterialsManagement = () => {
                                          onChange={(e) => setFormData({ ...formData, requiredTier: e.target.value })}
                                          className="bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold text-indigo-900 focus:outline-none"
                                      >
+                                         <option value="Free Trial">Free Trial</option>
                                          <option value="Basic">Basic</option>
                                          <option value="Premium">Premium</option>
                                          <option value="Gold">Gold</option>

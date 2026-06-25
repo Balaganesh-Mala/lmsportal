@@ -10,7 +10,7 @@ const UpdatePassword = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
-    const [settings, setSettings] = useState({ siteTitle: 'JobReady', logoUrl: '' });
+    const [settings, setSettings] = useState({ siteTitle: 'Smart Aspirants', logoUrl: '' });
     const navigate = useNavigate();
 
     // Fetch site settings (logo, title)

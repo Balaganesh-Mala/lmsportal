@@ -220,7 +220,7 @@ const MyCourses = () => {
                                     <div>
                                         <h3 className="text-xl font-extrabold text-slate-900 mb-2">Internal Assets Only</h3>
                                         <p className="text-sm text-slate-500 leading-relaxed">
-                                            Recorded videos and study notes are strictly for your personal learning. Sharing these materials externally is a severe violation of Finwise Terms of Service.
+                                            Recorded videos and study notes are strictly for your personal learning. Sharing these materials externally is a severe violation of Smart Aspirants Terms of Service.
                                         </p>
                                     </div>
                                     <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 text-left">

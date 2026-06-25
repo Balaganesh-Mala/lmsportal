@@ -16,7 +16,7 @@ const Blogs = () => {
         title: '',
         excerpt: '',
         content: '',
-        author: 'JobReady Team',
+        author: 'Smart Aspirants Team',
         category: 'Career Advice',
         image: null
     });
@@ -70,7 +70,7 @@ const Blogs = () => {
                 title: '',
                 excerpt: '',
                 content: '',
-                author: 'JobReady Team',
+                author: 'Smart Aspirants Team',
                 category: 'Career Advice',
                 image: null
             });

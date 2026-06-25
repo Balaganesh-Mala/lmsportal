@@ -26,7 +26,7 @@ const FaqSection = () => {
     },
     {
       question: "Where do our students work?",
-      answer: "Finwise students are working in reputed organizations across the finance and corporate sector, including companies like Wells Fargo, State Street, S&P Global, FactSet, Genpact, Accenture, KFintech, Alter Domus, CES, MSN Laboratories, and Computershare"
+      answer: "Smart Aspirants students are working in reputed organizations across the finance and corporate sector, including companies like Wells Fargo, State Street, S&P Global, FactSet, Genpact, Accenture, KFintech, Alter Domus, CES, MSN Laboratories, and Computershare"
     }
   ];
 

@@ -261,7 +261,7 @@ router.post('/create', async (req, res) => {
         `;
 
         try {
-            await sendEmail(email, "JobReady Trainer Portal - Login Credentials", emailContent);
+            await sendEmail(email, "Smart Aspirants Trainer Portal - Login Credentials", emailContent);
         } catch (emailErr) {
             console.error("Failed to send email", emailErr);
         }

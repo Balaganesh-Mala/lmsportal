@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const settingSchema = new mongoose.Schema({
   siteTitle: {
     type: String,
-    default: 'JobReady Skills Center'
+    default: 'Smart Aspirants'
   },
   logoUrl: {
     type: String,
@@ -12,7 +12,7 @@ const settingSchema = new mongoose.Schema({
   contact: {
     phone: { type: String, default: '' },
     whatsapp: { type: String, default: '' },
-    email: { type: String, default: 'support@jobreadyskills.com' },
+    email: { type: String, default: 'support@smartaspirants.com' },
     address: { type: String, default: '' }
   },
   socials: {

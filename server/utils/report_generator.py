@@ -63,7 +63,7 @@ def generate_pdf(data):
     elements = []
 
     # --- Header Section ---
-    elements.append(Paragraph("FINWISE CAREER SOLUTIONS", title_style))
+    elements.append(Paragraph("SMART ASPIRANTS", title_style))
     elements.append(Paragraph(f"Official Mock Interview Performance Report | {datetime.now().strftime('%d %b %Y')}", subtitle_style))
     
     # --- Candidate Info Table ---
@@ -159,7 +159,7 @@ def generate_pdf(data):
 
     # --- Footer ---
     elements.append(Spacer(1, 50))
-    elements.append(Paragraph("This is a computer-generated report based on your mock interview performance evaluated by our expert trainers at Finwise Career Solutions. For any queries, reach out to info@finwisecareers.com", 
+    elements.append(Paragraph("This is a computer-generated report based on your mock interview performance evaluated by our expert trainers at Smart Aspirants. For any queries, reach out to info@smartaspirants.com", 
                              ParagraphStyle('Footer', parent=styles['Normal'], fontSize=7, textColor=colors.grey, alignment=1)))
 
     # Finalize

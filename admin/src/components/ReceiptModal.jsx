@@ -110,7 +110,7 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                             {/* Watermark Section */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.015] select-none print:opacity-[0.02] z-0 overflow-hidden">
                                 <h1 className="text-[3.2rem] md:text-[3.5rem] font-black -rotate-12 uppercase tracking-[0.2em] text-center whitespace-nowrap">
-                                    FINWISE CAREER SOLUTIONS
+                                    SMART ASPIRANTS
                                 </h1>
                             </div>
 
@@ -122,7 +122,7 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                                     </div>
                                     <div>
                                         <h1 className="text-xl font-bold tracking-tight uppercase text-gray-900">
-                                            Finwise Career Solutions
+                                            Smart Aspirants
                                         </h1>
                                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">Academic Excellence • Career Success</p>
                                     </div>
@@ -239,8 +239,8 @@ export default function ReceiptModal({ isOpen, onClose, installment }) {
                                     <div className="max-w-xs">
                                         <p className="text-[9px] font-bold text-gray-400 uppercase leading-relaxed tracking-wider">
                                             * Fees are non-refundable.<br />
-                                            * Official digital record of Finwise Career Solutions.<br />
-                                            * Verify at finwisecareers.com
+                                            * Official digital record of Smart Aspirants.<br />
+                                            * Verify at smartaspirants.com
                                         </p>
                                     </div>
 

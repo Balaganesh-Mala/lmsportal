@@ -6,16 +6,16 @@ const SEO = ({ title, description, keywords, image }) => {
     const { settings } = useSettings();
 
     // Fallback/Default values
-    const siteTitle = settings?.siteTitle || 'Finwise Career Solutions';
+    const siteTitle = settings?.siteTitle || 'Smart Aspirants';
     const defaultDescription = 'Bridging the gap between students and Industry with corporate-level training and real-world experience.';
-    const defaultKeywords = 'Investment Banking, Finance, Accounting, Corporate Training, Finwise Career Solutions';
-    const defaultImage = 'https://finwisecareers.com/logo.jpeg';
+    const defaultKeywords = 'Investment Banking, Finance, Accounting, Corporate Training, Smart Aspirants';
+    const defaultImage = 'https://res.cloudinary.com/dazv62vrd/image/upload/f_auto,q_auto/d3ff9c9d-14ed-4628-abf4-51167ad172a1_cqcbj5';
 
     // Ensure image is an absolute URL if it exists
     let metaImage = image || defaultImage;
     if (metaImage && metaImage.startsWith('/')) {
         // Use the site URL from settings or a reliable default
-        const siteUrl = settings?.siteUrl || 'https://finwisecareers.com';
+        const siteUrl = settings?.siteUrl || 'https://smartaspirants.com';
         metaImage = siteUrl + (metaImage.startsWith('/') ? '' : '/') + metaImage;
     }
 
@@ -55,7 +55,7 @@ const SEO = ({ title, description, keywords, image }) => {
 
             {/* Twitter */}
             <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:site" content="@finwise" />
+            <meta name="twitter:site" content="@smartaspirants" />
             <meta name="twitter:url" content={window.location.href} />
             <meta name="twitter:title" content={metaTitle} />
             <meta name="twitter:description" content={metaDescription} />

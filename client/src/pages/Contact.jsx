@@ -12,7 +12,7 @@ const Contact = () => {
     // Dynamic Data from Settings
     const address = getContactInfo('address') || '123 Skills Ave, Tech City, State';
     const phone = getContactInfo('phone') || '+1 (555) 123-4567';
-    const email = getContactInfo('email') || 'info@jobreadyskills.com';
+    const email = getContactInfo('email') || 'info@smartaspirants.com';
 
     const [formData, setFormData] = useState({
         name: '',
@@ -54,7 +54,7 @@ const Contact = () => {
         <div className="bg-[#F9FAFB] min-h-screen relative overflow-hidden text-slate-900">
             <SEO
                 title="Contact Us"
-                description="Get in touch with Finwise Career Solutions. We are here to answer your queries about professional finance courses, fees, and career guidance."
+                description="Get in touch with Smart Aspirants. We are here to answer your queries about professional finance courses, fees, and career guidance."
             />
             {/* Cinematic Header Section */}
             <div className="pt-36 pb-12 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 border-b border-white/5 relative overflow-hidden shadow-2xl">

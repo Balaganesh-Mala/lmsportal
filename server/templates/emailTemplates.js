@@ -7,9 +7,9 @@ const ACCENT_COLOR = '#f8fafc';
 
 // Helper to get branding
 const getBranding = (settings) => ({
-    name: settings?.siteTitle || 'Finwise Career Solutions',
+    name: settings?.siteTitle || 'Smart Aspirants',
     logo: settings?.logoUrl || '',
-    email: settings?.contact?.email || 'info@finwisecareers.com',
+    email: settings?.contact?.email || 'info@smartaspirants.com',
     phone: settings?.contact?.phone || '+91-XXXXXXXXXX',
     address: settings?.contact?.address || ''
 });
@@ -17,9 +17,9 @@ const getBranding = (settings) => ({
 const baseLayout = (content, settings) => {
     const brand = getBranding(settings);
     
-    // Top banner image using Cloudinary URL for broad email client support
-    const headerContent = `<div style="text-align: center; padding: 0; line-height: 0; margin: 0; background-color: #ffffff;">
-             <img src="https://res.cloudinary.com/drzs556ss/image/upload/v1775472964/finwise_assets/mailtemplate.png" alt="Finwise Career Solutions" style="width: 100%; max-width: 600px; display: block; border-top-left-radius: 12px; border-top-right-radius: 12px; margin: 0 auto; outline: none; border-bottom: 0;">
+    // Modern CSS text header for full dynamic branding and robustness
+    const headerContent = `<div style="text-align: center; padding: 30px 20px; background-color: #1e3a8a; border-top-left-radius: 12px; border-top-right-radius: 12px; margin: 0 auto; color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 0.5px;">
+             ${brand.name}
            </div>`;
 
     return `
@@ -82,7 +82,7 @@ const baseLayout = (content, settings) => {
 };
 
 const studentRegistrationTemplate = (name, email, password, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const content = `
     <h1 style="margin: 0 0 20px; color: #0f172a; font-size: 26px; font-weight: 800;">Welcome to ${brandName}!</h1>
     <p style="margin: 0 0 20px; color: #475569; line-height: 1.6; font-size: 16px;">
@@ -112,7 +112,7 @@ const studentRegistrationTemplate = (name, email, password, settings = {}) => {
 };
 
 const trainerRegistrationTemplate = (name, email, password, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const content = `
     <h1 style="margin: 0 0 20px; color: #0f172a; font-size: 26px; font-weight: 800;">Welcome to ${brandName}!</h1>
     <p style="margin: 0 0 20px; color: #475569; line-height: 1.6; font-size: 16px;">
@@ -142,7 +142,7 @@ const trainerRegistrationTemplate = (name, email, password, settings = {}) => {
 };
 
 const resetPasswordTemplate = (name, link, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const content = `
     <h1 style="margin: 0 0 20px; color: #0f172a; font-size: 24px; font-weight: 800;">Password Reset Request</h1>
     <p style="margin: 0 0 25px; color: #475569; line-height: 1.6; font-size: 16px;">
@@ -169,7 +169,7 @@ const resetPasswordTemplate = (name, link, settings = {}) => {
 
 // Course Enrollment Template
 const courseEnrolledTemplate = (name, course, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const content = `
     <h1 style="margin: 0 0 20px; color: #0f172a; font-size: 24px; font-weight: 800;">Enrollment Confirmed</h1>
     <p style="margin: 0 0 20px; color: #475569; line-height: 1.6; font-size: 16px;">
@@ -194,7 +194,7 @@ const courseEnrolledTemplate = (name, course, settings = {}) => {
 
 // Brochure Download Template
 const brochureDownloadTemplate = (name, courseName, brochureUrl, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const content = `
     <h1 style="margin: 0 0 20px; color: #0f172a; font-size: 24px; font-weight: 800;">Your Course Brochure</h1>
     <p style="margin: 0 0 20px; color: #475569; line-height: 1.6; font-size: 16px;">
@@ -226,7 +226,7 @@ const brochureDownloadTemplate = (name, courseName, brochureUrl, settings = {}) 
 
 // Syllabus Download Template
 const syllabusDownloadTemplate = (name, courseName, syllabusUrl, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const content = `
     <h1 style="margin: 0 0 20px; color: #0f172a; font-size: 24px; font-weight: 800;">Your Course Syllabus</h1>
     <p style="margin: 0 0 20px; color: #475569; line-height: 1.6; font-size: 16px;">
@@ -258,7 +258,7 @@ const syllabusDownloadTemplate = (name, courseName, syllabusUrl, settings = {}) 
 
 // Fee & Curriculum Template
 const feeAndCurriculumTemplate = (name, courseName, courseFee, curriculumUrl, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const content = `
     <h1 style="margin: 0 0 20px; color: #0f172a; font-size: 24px; font-weight: 800;">Course Information</h1>
     <p style="margin: 0 0 20px; color: #475569; line-height: 1.6; font-size: 16px;">
@@ -293,7 +293,7 @@ const feeAndCurriculumTemplate = (name, courseName, courseFee, curriculumUrl, se
 };
 // Interview Schedule Template
 const interviewScheduleTemplate = (name, details, settings = {}) => {
-  const brandName = settings?.siteTitle || 'Finwise Career Solutions';
+  const brandName = settings?.siteTitle || 'Smart Aspirants';
   const { date, time, platform, link, passcode, instructions, requiredDocs } = details;
   
   const content = `

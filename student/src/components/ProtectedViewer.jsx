@@ -292,7 +292,7 @@ const ProtectedViewer = ({ type, url, title, studentInfo }) => {
                         </a>
                         
                         <div className="mt-12 flex items-center gap-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                            <Shield size={12} /> Finwise Secure Gateway
+                            <Shield size={12} /> Smart Aspirants Secure Gateway
                         </div>
                     </motion.div>
                 )}

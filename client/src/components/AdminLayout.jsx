@@ -60,7 +60,7 @@ const AdminLayout = () => {
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-indigo-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}
       >
         <div className="flex items-center justify-between p-4 border-b border-indigo-800">
-          <span className="text-2xl font-bold tracking-wider">JobReady Admin</span>
+          <span className="text-2xl font-bold tracking-wider">Smart Aspirants Admin</span>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden">
             <X size={24} />
           </button>

@@ -176,7 +176,7 @@ const RewardStore = () => {
                             <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-indigo-50/30">
                                 <div>
                                     <div className="flex items-center gap-2 text-indigo-600 font-bold text-[10px] uppercase tracking-widest mb-1">
-                                        <Trophy size={14} className="text-amber-500" /> Finwise Rewards Guide
+                                        <Trophy size={14} className="text-amber-500" /> Smart Aspirants Rewards Guide
                                     </div>
                                     <h3 className="text-xl font-extrabold text-slate-900">How to Earn & Spend?</h3>
                                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">

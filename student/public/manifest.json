@@ -1,15 +1,15 @@
 {
-  "short_name": "Finwise",
-  "name": "Finwise Student Portal",
+  "short_name": "Smart Aspirants",
+  "name": "Smart Aspirants Student Portal",
   "icons": [
     {
-      "src": "https://res.cloudinary.com/drzs556ss/image/upload/v1775401479/settings/e3e62e3e83aca5e6b0167a71755916f5_p7b27f.jpg",
+      "src": "https://res.cloudinary.com/dazv62vrd/image/upload/f_auto,q_auto/d3ff9c9d-14ed-4628-abf4-51167ad172a1_cqcbj5",
       "type": "image/jpeg",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "https://res.cloudinary.com/drzs556ss/image/upload/v1775401479/settings/e3e62e3e83aca5e6b0167a71755916f5_p7b27f.jpg",
+      "src": "https://res.cloudinary.com/dazv62vrd/image/upload/f_auto,q_auto/d3ff9c9d-14ed-4628-abf4-51167ad172a1_cqcbj5",
       "type": "image/jpeg",
       "sizes": "512x512",
       "purpose": "any maskable"
