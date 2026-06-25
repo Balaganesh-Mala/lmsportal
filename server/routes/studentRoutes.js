@@ -132,7 +132,7 @@ router.post('/register', upload.single('profilePicture'), async (req, res) => {
     try {
         const { 
             firstName, lastName, email, phone, gender, dob, address, city, district, collegeName,
-            batchId, password
+            batchId, password, trialSelected
         } = req.body;
         
         const name = `${firstName} ${lastName}`.trim();
@@ -143,6 +143,24 @@ router.post('/register', upload.single('profilePicture'), async (req, res) => {
         let student = await Student.findOne({ email: normalizedEmail });
         if (student) {
             return res.status(400).json({ success: false, message: 'Student with this email already exists' });
+        }
+
+        // Validate password strength
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!password || !passwordRegex.test(password)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one number, and one special character (e.g. @$!%*?&)' 
+            });
+        }
+
+        // Validate phone number: exactly 10 digits
+        const phoneRegex = /^\d{10}$/;
+        if (!phone || !phoneRegex.test(phone)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Phone number must be exactly 10 digits' 
+            });
         }
 
         let profilePictureUrl = "";
@@ -159,8 +177,11 @@ router.post('/register', upload.single('profilePicture'), async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // Calculate 10 days from now for trial
-        const trialEndsAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+        // Calculate trial end date based on user's choice
+        const isTrial = trialSelected === 'true' || trialSelected === true;
+        const trialEndsAt = isTrial 
+            ? new Date(Date.now() + 10 * 24 * 60 * 60 * 1000) 
+            : new Date(Date.now() - 1000); // Expired trial (forces redirect to subscription page)
 
         let courseName = "";
         let courseCategory = "";

@@ -19,7 +19,7 @@ const CourseSchema = new mongoose.Schema({
     },
     duration: {
         type: String,
-        required: [true, 'Please add course duration']
+        default: ''
     },
     highlights: {
         type: [String], // Array of strings
@@ -31,7 +31,7 @@ const CourseSchema = new mongoose.Schema({
     }],
     fee: {
         type: String, 
-        required: [true, 'Please add course fee']
+        default: ''
     },
     skillLevel: {
         type: String,

@@ -54,13 +54,17 @@ const CourseDetails = () => {
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="container mx-auto px-4 text-center">
-                        <span className="bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wide mb-4 inline-block">
-                            {course.skillLevel}
-                        </span>
+                        {course.skillLevel && (
+                            <span className="bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wide mb-4 inline-block">
+                                {course.skillLevel}
+                            </span>
+                        )}
                         <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">{course.title}</h1>
-                        <div className="flex justify-center flex-wrap gap-6 text-lg">
-                            <span className="flex items-center"><Clock className="mr-2" /> {course.duration}</span>
-                        </div>
+                        {course.duration && (
+                            <div className="flex justify-center flex-wrap gap-6 text-lg">
+                                <span className="flex items-center"><Clock className="mr-2" /> {course.duration}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -158,14 +162,18 @@ const CourseDetails = () => {
                             <h3 className="text-xl font-bold text-gray-900 mb-6">Interested in this course?</h3>
 
                             <div className="space-y-4 mb-8">
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="text-gray-600">Duration</span>
-                                    <span className="font-semibold text-gray-900">{course.duration}</span>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="text-gray-600">Level</span>
-                                    <span className="font-semibold text-gray-900">{course.skillLevel}</span>
-                                </div>
+                                {course.duration && (
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                        <span className="text-gray-600">Duration</span>
+                                        <span className="font-semibold text-gray-900">{course.duration}</span>
+                                    </div>
+                                )}
+                                {course.skillLevel && (
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                        <span className="text-gray-600">Level</span>
+                                        <span className="font-semibold text-gray-900">{course.skillLevel}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-4">

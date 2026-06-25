@@ -429,9 +429,11 @@ const Courses = () => {
                                             </button>
                                         </div>
                                         <div className="absolute bottom-2 left-2 flex gap-2">
-                                            <span className="bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                                                {course.skillLevel}
-                                            </span>
+                                            {course.skillLevel && (
+                                                <span className="bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                                                    {course.skillLevel}
+                                                </span>
+                                            )}
                                             {course.isBonus && (
                                                 <span className="bg-purple-600/80 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
                                                     Bonus
@@ -448,15 +450,21 @@ const Courses = () => {
                                             {course.description}
                                         </p>
 
-                                        <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t border-gray-100 mt-auto">
-                                            <div className="flex items-center gap-1">
-                                                <Clock size={16} className="text-gray-400" />
-                                                {course.duration}
+                                        {(course.duration || course.fee) && (
+                                            <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t border-gray-100 mt-auto">
+                                                {course.duration && (
+                                                    <div className="flex items-center gap-1">
+                                                        <Clock size={16} className="text-gray-400" />
+                                                        {course.duration}
+                                                    </div>
+                                                )}
+                                                {course.fee && (
+                                                    <div className="font-semibold text-indigo-600">
+                                                        ₹{course.fee}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="font-semibold text-indigo-600">
-                                                ₹{course.fee}
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             ))
@@ -504,25 +512,6 @@ const Courses = () => {
                                         className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500"
                                         placeholder="Detailed subject overview, prerequisites, and learning goals..."
                                     />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-                                    <input type="text" name="duration" value={formData.duration} onChange={handleChange} required
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="e.g. 6 Months" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Fee (INR)</label>
-                                    <input type="text" name="fee" value={formData.fee} onChange={handleChange} required
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="e.g. 4500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Skill Level</label>
-                                    <select name="skillLevel" value={formData.skillLevel} onChange={handleChange}
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500 bg-white">
-                                        <option value="Beginner">Beginner</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Advanced">Advanced</option>
-                                    </select>
                                 </div>
                                 <div className="flex items-center mt-6">
                                     <input
@@ -580,20 +569,14 @@ const Courses = () => {
                                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Syllabus PDF File</label>
-                                    <input type="file" name="syllabusPdf" onChange={handleFileChange} accept="application/pdf"
-                                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-2" />
-                                    <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">OR Syllabus External Link (Google Doc, Drive)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Syllabus External Link (Google Doc, Drive)</label>
                                     <input type="url" name="syllabusLink" value={formData.syllabusLink} onChange={handleChange}
-                                        className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="https://docs.google.com/..." />
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="https://docs.google.com/..." />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Brochure PDF File</label>
-                                    <input type="file" name="brochurePdf" onChange={handleFileChange} accept="application/pdf"
-                                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mb-2" />
-                                    <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">OR Brochure External Link (Google Doc, Drive)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Brochure External Link (Google Doc, Drive)</label>
                                     <input type="url" name="brochureLink" value={formData.brochureLink} onChange={handleChange}
-                                        className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="https://docs.google.com/..." />
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:border-indigo-500" placeholder="https://docs.google.com/..." />
                                 </div>
                             </div>
 

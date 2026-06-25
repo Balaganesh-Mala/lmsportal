@@ -277,9 +277,11 @@ const MyCourses = () => {
                                         <span className={`text-xs font-semibold px-2 py-1 rounded ${course.isBonus ? 'text-purple-600 bg-purple-50' : 'text-indigo-600 bg-indigo-50'}`}>
                                             {course.isBonus ? 'Bonus' : (course.skillLevel || 'Course')}
                                         </span>
-                                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                                            <Clock size={12} /> {course.duration}
-                                        </span>
+                                        {course.duration && (
+                                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                                                <Clock size={12} /> {course.duration}
+                                            </span>
+                                        )}
                                     </div>
 
                                     <h3 className="font-bold text-gray-900 mb-1 line-clamp-1" title={course.title}>

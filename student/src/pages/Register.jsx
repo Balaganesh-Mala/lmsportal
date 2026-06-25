@@ -30,11 +30,11 @@ const Register = () => {
     const [stats, setStats] = useState({ today: 0, week: 0, month: 0, total: 0 });
     const [batches, setBatches] = useState([]);
     const [settings, setSettings] = useState(null);
-    const [preview, setPreview] = useState(null);
+    const [trialSelected, setTrialSelected] = useState(true);
     const [form, setForm] = useState({
         firstName: '', lastName: '', email: '', password: '', phone: '',
         dob: '', gender: '', address: '', city: '', district: '',
-        collegeName: '', batchId: '', profilePicture: null
+        collegeName: '', batchId: ''
     });
 
     useEffect(() => {
@@ -65,6 +65,19 @@ const Register = () => {
             if (!form.firstName || !form.lastName || !form.email || !form.password || !form.phone)
                 return toast.error('Fill all required fields');
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return toast.error('Invalid email');
+
+            // Password strength validation
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+            if (!passwordRegex.test(form.password)) {
+                return toast.error('Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one number, and one special character (e.g. @$!%*?&)');
+            }
+
+            // Phone validation
+            const phoneRegex = /^\d{10}$/;
+            if (!phoneRegex.test(form.phone)) {
+                return toast.error('Phone number must be exactly 10 digits');
+            }
+
             try {
                 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                 const { data } = await axios.get(`${API}/api/students/check-email?email=${form.email}`);
@@ -83,12 +96,19 @@ const Register = () => {
             const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             const fd = new FormData();
             Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
+            fd.append('trialSelected', trialSelected);
             const res = await axios.post(`${API}/api/students/register`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (res.data.success) {
                 toast.success('Registration successful!');
                 localStorage.setItem('studentUser', JSON.stringify(res.data.user));
                 localStorage.setItem('studentToken', res.data.token);
-                setTimeout(() => navigate('/dashboard'), 1200);
+                setTimeout(() => {
+                    if (trialSelected) {
+                        navigate('/dashboard');
+                    } else {
+                        navigate('/subscription');
+                    }
+                }, 1200);
             }
         } catch (err) { toast.error(err.response?.data?.message || 'Registration failed'); }
         finally { setLoading(false); }
@@ -322,10 +342,10 @@ const Register = () => {
                                         ))}
                                     </div>
                                     <div>
-                                        <label className={labelCls}>College / Institution</label>
+                                        <label className={labelCls}>School / College</label>
                                         <div className="relative">
                                             <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                            <input type="text" value={form.collegeName} onChange={e => set('collegeName', e.target.value)} placeholder="Your college name" className={inputCls} />
+                                            <input type="text" value={form.collegeName} onChange={e => set('collegeName', e.target.value)} placeholder="Your school or college name" className={inputCls} />
                                         </div>
                                     </div>
                                 </motion.div>
@@ -351,31 +371,77 @@ const Register = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Profile Picture <span className="text-gray-400 font-normal">(optional)</span></label>
-                                        <label htmlFor="pic-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-violet-50 hover:border-violet-400 transition-all">
-                                            {preview ? (
-                                                <div className="flex items-center gap-4 p-3">
-                                                    <img src={preview} alt="Preview" className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md" />
-                                                    <span className="text-sm font-medium text-violet-600">Change Photo</span>
+                                        <label className={labelCls}>Choose Access Plan</label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div 
+                                                onClick={() => setTrialSelected(true)}
+                                                className={`cursor-pointer p-4 rounded-xl border-2 transition-all flex flex-col justify-between h-36 hover:shadow-md ${
+                                                    trialSelected 
+                                                        ? 'border-violet-600 bg-violet-50/40 shadow-sm shadow-violet-100' 
+                                                        : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                        trialSelected ? 'bg-violet-600 text-white' : 'bg-gray-200 text-gray-600'
+                                                    }`}>
+                                                        Free Trial
+                                                    </span>
+                                                    <input 
+                                                        type="radio" 
+                                                        name="accessPlan" 
+                                                        checked={trialSelected} 
+                                                        onChange={() => setTrialSelected(true)} 
+                                                        className="accent-violet-600 h-4 w-4"
+                                                    />
                                                 </div>
-                                            ) : (
-                                                <div className="flex flex-col items-center py-4">
-                                                    <Upload size={24} className="text-gray-400 mb-2" />
-                                                    <p className="text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag & drop</p>
-                                                    <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-gray-800 mt-2">10-Day Free Trial</h4>
+                                                    <p className="text-[10px] text-gray-500 leading-snug mt-1">Get full access to all portal features free for 10 days.</p>
                                                 </div>
-                                            )}
-                                            <input id="pic-upload" type="file" className="hidden" accept="image/*" onChange={e => {
-                                                const f = e.target.files[0];
-                                                if (f) { set('profilePicture', f); setPreview(URL.createObjectURL(f)); }
-                                            }} />
-                                        </label>
+                                            </div>
+
+                                            <div 
+                                                onClick={() => setTrialSelected(false)}
+                                                className={`cursor-pointer p-4 rounded-xl border-2 transition-all flex flex-col justify-between h-36 hover:shadow-md ${
+                                                    !trialSelected 
+                                                        ? 'border-violet-600 bg-violet-50/40 shadow-sm shadow-violet-100' 
+                                                        : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                        !trialSelected ? 'bg-violet-600 text-white' : 'bg-gray-200 text-gray-600'
+                                                    }`}>
+                                                        Premium
+                                                    </span>
+                                                    <input 
+                                                        type="radio" 
+                                                        name="accessPlan" 
+                                                        checked={!trialSelected} 
+                                                        onChange={() => setTrialSelected(false)} 
+                                                        className="accent-violet-600 h-4 w-4"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-gray-800 mt-2">Subscription Plan</h4>
+                                                    <p className="text-[10px] text-gray-500 leading-snug mt-1">Skip the trial and choose a premium plan to unlock learning.</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="rounded-xl p-4 border" style={{ background: 'rgba(124,58,237,.05)', borderColor: 'rgba(124,58,237,.15)' }}>
-                                        <p className="text-sm text-violet-800 flex items-start gap-2">
-                                            <span className="text-violet-500 font-bold mt-0.5">ℹ</span>
-                                            Your 10-day free trial starts immediately after registration. Full access to all portal features included.
-                                        </p>
+                                        {trialSelected ? (
+                                            <p className="text-xs text-violet-800 flex items-start gap-2">
+                                                <span className="text-violet-500 font-bold mt-0.5">ℹ</span>
+                                                Your 10-day free trial starts immediately. You can upgrade to a premium subscription plan at any time.
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-violet-800 flex items-start gap-2">
+                                                <span className="text-violet-500 font-bold mt-0.5">ℹ</span>
+                                                You will be redirected to the subscription plans page immediately after registration to unlock portal access.
+                                            </p>
+                                        )}
                                     </div>
                                 </motion.div>
                             </div>

@@ -37,12 +37,16 @@ const CourseCard = ({ course }) => {
       {/* Content Area */}
       <div className="p-6 flex flex-col flex-grow">
         <div className="flex justify-between items-start mb-4">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold uppercase tracking-wide">
-            {course.skillLevel}
-          </span>
-          <div className="flex items-center gap-1 text-gray-400 text-xs">
-            <Clock size={14} /> {course.duration}
-          </div>
+          {course.skillLevel && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold uppercase tracking-wide">
+              {course.skillLevel}
+            </span>
+          )}
+          {course.duration && (
+            <div className="flex items-center gap-1 text-gray-400 text-xs">
+              <Clock size={14} /> {course.duration}
+            </div>
+          )}
         </div>
 
         <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight group-hover:text-indigo-600 transition-colors">
